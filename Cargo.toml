@@ -1,0 +1,12 @@
+[package]
+name = "tinyjs"
+version = "0.1.0"
+edition = "2024"
+
+[profile.release]
+lto = true
+panic = "abort"
+opt-level = "z"
+codegen-units = 1
+
+[dependencies]
