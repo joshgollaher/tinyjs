@@ -3,7 +3,7 @@
 #[derive(Debug, Clone)]
 pub enum Token {
     Identifier(String),
-    Literal(String),
+    StringLiteral(String),
     Number(f64),
 
     // Keywords

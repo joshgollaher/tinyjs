@@ -4,9 +4,10 @@ use std::{env, fs};
 
 mod lexer;
 mod token;
+mod parser;
 
 use crate::lexer::Lexer;
-
+use crate::parser::AST;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -19,4 +20,6 @@ fn main() {
 
     let tokens = Lexer::new(&contents).lex();
     println!("{:?}", tokens);
+    
+    let ast = AST::from_tokens(tokens);
 }

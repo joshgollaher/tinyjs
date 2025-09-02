@@ -96,7 +96,7 @@ impl Lexer {
         }
         self.consume(); // And closing quote.
 
-        Token::Literal(literal)
+        Token::StringLiteral(literal)
     }
 
     pub fn lex(&mut self) -> Vec<Token> {
