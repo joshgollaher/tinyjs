@@ -30,6 +30,12 @@ pub enum Literal {
 pub enum Expression {
     Literal(Literal),
     Identifier(String),
+    Object {
+        properties: Vec<(String, Box<Expression>)>,
+    },
+    Array {
+        elements: Vec<Box<Expression>>,
+    },
     BinaryOp {
         left: Box<Expression>,
         op: BinaryOperator,
