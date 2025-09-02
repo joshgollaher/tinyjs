@@ -19,7 +19,7 @@ impl Lexer {
     }
 
     fn peek_ahead(&self, by: usize) -> Option<char> {
-        if self.pos + by >= self.source.len() - 1 {
+        if self.pos + by >= self.source.len() {
             None
         } else {
             self.source.chars().nth(self.pos + by)
@@ -114,6 +114,7 @@ impl Lexer {
                 '{' => { self.consume(); Some(Token::LeftBrace) },
                 '}' => { self.consume(); Some(Token::RightBrace) },
                 ';' => { self.consume(); Some(Token::Semicolon) },
+                ':' => { self.consume(); Some(Token::Colon) },
                 ',' => { self.consume(); Some(Token::Comma) },
                 '.' => { self.consume(); Some(Token::Dot) },
                 '[' => { self.consume(); Some(Token::LeftBracket) },
@@ -192,12 +193,13 @@ impl Lexer {
                         Some(Token::Greater)
                     }
                 },
-                _ => { println!("Unknown character: {c} in position {}", self.pos); self.consume(); None }
+                _ => { self.consume(); None }
             };
 
             token.map(|t| tokens.push(t));
         }
-
+        
+        tokens.push(Token::EOF);
         tokens
     }
 }
