@@ -23,13 +23,25 @@ pub enum UnaryOperator {
     Not,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Literal {
     Number(f64),
     String(String),
     Null,
     Boolean(bool),
     Undefined,
+}
+
+impl Literal {
+    pub(crate) fn truthy(&self) -> bool {
+        match self {
+            Literal::Number(n) => *n != 0.,
+            Literal::String(_) => true,
+            Literal::Null => false,
+            Literal::Boolean(b) => *b,
+            Literal::Undefined => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
