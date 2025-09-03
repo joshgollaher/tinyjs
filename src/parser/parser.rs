@@ -210,6 +210,7 @@ impl Parser {
 
     fn do_args(&mut self) -> Vec<Expression> {
         let mut args = Vec::new();
+        self.expect(Token::LeftParen);
         if self.peek() != Token::RightParen {
             loop {
                 args.push(self.expression());
@@ -330,6 +331,7 @@ impl Parser {
                 // Function Call
                 if matches!(self.peek(), Token::LeftParen) {
                     let args = self.do_args().into_iter().map(Box::new).collect();
+                    self.expect(Token::RightParen);
                     Expression::FunctionCall { name, args }
                 } else {
                     Expression::Identifier(name)
@@ -349,7 +351,10 @@ impl Parser {
                 self.expect(Token::RightBracket);
                 Expression::Array { elements: exprs }
             }
-            Token::LeftBrace => Expression::Object { properties: vec![] },
+            Token::LeftBrace => {
+                let properties = self.do_object();
+                Expression::Object { properties }
+            },
             Token::Minus => {
                 let expr = self.expression();
                 Expression::UnaryOp {
@@ -367,17 +372,43 @@ impl Parser {
             tok => panic!("Unexpected token {:?}", tok),
         };
 
-        // Assignment
-        if let Expression::Identifier(name) = &expr {
-            if self.peek() == Token::Equal {
-                self.consume();
-                let value = self.expression();
+        // Postfix operators
+        loop {
+            match self.peek() {
+                Token::LeftBracket => {
+                    self.consume();
+                    let index = self.expression();
+                    self.expect(Token::RightBracket);
+                    expr = Expression::Index {
+                        target: expr.into(),
+                        index: index.into()
+                    }
+                }
+                Token::Dot => {
+                    self.consume();
+                    let name = match self.consume() {
+                        Token::Identifier(name) => name,
+                        tok => panic!("Expected identifier after dot, got {:?}", tok),
+                    };
 
-                return Expression::Assignment {
-                    name: name.clone(),
-                    value: value.into(),
-                };
+                    expr = Expression::Property {
+                        target: expr.into(),
+                        name,
+                    };
+                }
+                _ => break,
             }
+        }
+
+        // Assignment
+        if self.peek() == Token::Equal {
+            self.consume();
+            let value = self.expression();
+
+            return Expression::Assignment {
+                target: expr.into(),
+                value: value.into(),
+            };
         }
 
         // Infix operators

@@ -56,7 +56,7 @@ pub enum Expression {
         args: Vec<Box<Expression>>,
     },
     Assignment {
-        name: String,
+        target: Box<Expression>,
         value: Box<Expression>,
     },
     Index {
