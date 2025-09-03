@@ -1,7 +1,7 @@
 use crate::lexer::Token;
 use crate::parser::parser::Parser;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BinaryOperator {
     Add,
     Sub,
@@ -17,14 +17,13 @@ pub enum BinaryOperator {
     NotEqual,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UnaryOperator {
     Negate,
     Not,
 }
 
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Literal {
     Number(f64),
     String(String),
@@ -33,7 +32,7 @@ pub enum Literal {
     Undefined,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Literal(Literal),
     Identifier(String),
@@ -70,7 +69,7 @@ pub enum Expression {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     Expression(Box<Expression>),
     Return(Box<Expression>),
@@ -103,13 +102,13 @@ pub enum Statement {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AST {
     pub statements: Vec<Statement>,
 }
 
 impl AST {
-    pub fn from_tokens(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<Token>) -> Self {
         let mut parser = Parser::new(tokens);
         parser.parse()
     }

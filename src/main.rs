@@ -11,6 +11,7 @@ mod runtime;
 use crate::lexer::Lexer;
 use crate::parser::AST;
 use crate::runtime::{interpreter, Interpreter};
+use crate::optim::Optimizer;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -24,8 +25,11 @@ fn main() {
     let tokens = Lexer::new(&contents).lex();
     // println!("{:?}", tokens);
 
-    let ast = AST::from_tokens(tokens);
+    let ast = AST::new(tokens);
     println!("{:#?}", ast);
+
+    let mut optim = Optimizer::new(ast);
+    let ast = optim.optimize();
 
     let mut interpreter = Interpreter::new(ast);
     interpreter.run();
