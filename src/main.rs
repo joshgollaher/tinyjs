@@ -5,6 +5,8 @@ use std::{env, fs};
 mod lexer;
 mod token;
 mod parser;
+mod optim;
+mod runtime;
 
 use crate::lexer::Lexer;
 use crate::parser::AST;
