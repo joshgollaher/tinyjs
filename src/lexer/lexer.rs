@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::token::Token;
+use crate::lexer::Token;
 
 pub struct Lexer {
     source: String,

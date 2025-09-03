@@ -1,5 +1,5 @@
+use crate::lexer::Token;
 use crate::parser::parser::Parser;
-use crate::token::Token;
 
 #[derive(Debug)]
 pub enum BinaryOperator {
@@ -24,6 +24,7 @@ pub enum UnaryOperator {
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub enum Literal {
     Number(f64),
     String(String),

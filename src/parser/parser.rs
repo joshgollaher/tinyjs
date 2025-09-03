@@ -1,5 +1,5 @@
 use crate::parser::{AST, BinaryOperator, Expression, Literal, Statement, UnaryOperator};
-use crate::token::Token;
+use crate::lexer::Token;
 use std::cmp::PartialEq;
 
 pub struct Parser {

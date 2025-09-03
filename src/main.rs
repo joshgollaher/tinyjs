@@ -3,13 +3,14 @@
 use std::{env, fs};
 
 mod lexer;
-mod token;
 mod parser;
 mod optim;
 mod runtime;
 
+
 use crate::lexer::Lexer;
 use crate::parser::AST;
+use crate::runtime::{interpreter, Interpreter};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -25,4 +26,7 @@ fn main() {
 
     let ast = AST::from_tokens(tokens);
     println!("{:#?}", ast);
+
+    let mut interpreter = Interpreter::new(ast);
+    interpreter.run();
 }
