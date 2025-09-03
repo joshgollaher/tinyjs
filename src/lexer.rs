@@ -58,7 +58,9 @@ impl Lexer {
             ("return", Token::Return),
             ("function", Token::Function),
             ("true", Token::True),
-            ("false", Token::False)
+            ("false", Token::False),
+            ("null", Token::Null),
+            ("undefined", Token::Undefined),
         ]);
 
         // Parse until whitespace or punctuation.
@@ -193,12 +195,30 @@ impl Lexer {
                         Some(Token::Greater)
                     }
                 },
+                '&' => {
+                    self.consume();
+                    if self.peek() == Some('&') {
+                        self.consume();
+                        Some(Token::AmpAmp)
+                    } else {
+                        Some(Token::Amp)
+                    }
+                },
+                '|' => {
+                    self.consume();
+                    if self.peek() == Some('|') {
+                        self.consume();
+                        Some(Token::PipePipe)
+                    } else {
+                        Some(Token::Pipe)
+                    }
+                }
                 _ => { self.consume(); None }
             };
 
             token.map(|t| tokens.push(t));
         }
-        
+
         tokens.push(Token::EOF);
         tokens
     }

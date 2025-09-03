@@ -47,7 +47,7 @@ pub enum Expression {
     },
     FunctionCall {
         name: String,
-        args: Vec<Expression>,
+        args: Vec<Box<Expression>>,
     },
     Assignment {
         name: String,
@@ -82,6 +82,10 @@ pub enum Statement {
     Scope {
         statements: Vec<Statement>,
     },
+    Let {
+        name: String,
+        value: Box<Expression>,
+    }
 }
 
 #[derive(Debug)]

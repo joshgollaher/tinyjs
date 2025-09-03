@@ -6,6 +6,9 @@ pub enum Token {
     StringLiteral(String),
     Number(f64),
 
+    Null,
+    Undefined,
+
     // Keywords
     Let, Var,
     If, Else,
@@ -42,6 +45,10 @@ pub enum Token {
     GreaterEqual,
     Less,
     LessEqual,
+    Amp,
+    AmpAmp,
+    Pipe,
+    PipePipe,
 
     EOF,
 }
