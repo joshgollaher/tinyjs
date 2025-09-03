@@ -9,6 +9,12 @@ pub enum BinaryOperator {
     Div,
     BinaryAnd,
     BinaryOr,
+    GreaterThan,
+    LessThan,
+    GreaterThanOrEqual,
+    LessThanOrEqual,
+    Equal,
+    NotEqual,
 }
 
 #[derive(Debug)]
@@ -53,6 +59,14 @@ pub enum Expression {
         name: String,
         value: Box<Expression>,
     },
+    Index {
+        target: Box<Expression>,
+        index: Box<Expression>,
+    },
+    Property {
+        target: Box<Expression>,
+        name: String,
+    },
 }
 
 #[derive(Debug)]
@@ -71,7 +85,7 @@ pub enum Statement {
     For {
         init: Option<Box<Statement>>,
         condition: Option<Box<Expression>>,
-        update: Option<Box<Statement>>,
+        update: Option<Box<Expression>>,
         body: Box<Statement>,
     },
     Function {

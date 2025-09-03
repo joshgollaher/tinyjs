@@ -96,7 +96,38 @@ impl Parser {
     }
 
     fn do_for(&mut self) -> Statement {
-        todo!()
+        self.expect(Token::For);
+        self.expect(Token::LeftParen);
+        let init = if self.peek() != Token::Semicolon {
+            Some(self.statement())
+        } else {
+            self.expect(Token::Semicolon);
+            None
+        };
+        // statement() already handled the semicolon.
+
+        let condition = if self.peek() != Token::Semicolon {
+            Some(self.expression())
+        } else {
+            None
+        };
+        self.expect(Token::Semicolon);
+
+        let update = if self.peek() != Token::Semicolon {
+            Some(self.expression())
+        } else {
+            None
+        };
+        self.expect(Token::RightParen);
+
+        let body = self.statement();
+
+        Statement::For {
+            init: init.map(Box::new),
+            condition: condition.map(Box::new),
+            update: update.map(Box::new),
+            body: body.into(),
+        }
     }
 
     fn do_function(&mut self) -> Statement {
@@ -124,12 +155,14 @@ impl Parser {
         }
         self.expect(Token::RightParen);
 
-        let body = Statement::Scope { statements: self.do_scope() };
+        let body = Statement::Scope {
+            statements: self.do_scope(),
+        };
 
         Statement::Function {
             name,
             args,
-            body: body.into()
+            body: body.into(),
         }
     }
 
@@ -176,11 +209,62 @@ impl Parser {
     }
 
     fn do_args(&mut self) -> Vec<Expression> {
-        todo!()
+        let mut args = Vec::new();
+        if self.peek() != Token::RightParen {
+            loop {
+                args.push(self.expression());
+                if self.peek() == Token::RightParen {
+                    break;
+                }
+                self.expect(Token::Comma);
+            }
+        }
+
+        args
     }
 
     fn do_array(&mut self) -> Vec<Expression> {
-        todo!()
+        let mut elements = Vec::new();
+        if self.peek() != Token::RightBracket {
+            loop {
+                elements.push(self.expression());
+                if self.peek() == Token::RightBracket {
+                    break;
+                }
+                self.expect(Token::Comma);
+            }
+        }
+
+        elements
+    }
+
+    fn do_object(&mut self) -> Vec<(String, Box<Expression>)> {
+        let mut properties = Vec::new();
+        if self.peek() != Token::RightBrace {
+            loop {
+                let key = match self.consume() {
+                    Token::StringLiteral(s) => s,
+                    Token::Identifier(s) => s,
+                    tok => panic!(
+                        "Expected string literal or identifier in object literal, got {:?}",
+                        tok
+                    ),
+                };
+                self.expect(Token::Colon);
+                let value = self.expression();
+
+                properties.push((key, Box::new(value)));
+
+                if self.peek() == Token::RightBrace {
+                    break;
+                }
+
+                self.expect(Token::Comma);
+            }
+        }
+        self.expect(Token::RightBrace);
+
+        properties
     }
 
     fn match_infix_operators(&mut self) -> Option<BinaryOperator> {
@@ -208,7 +292,31 @@ impl Parser {
             Token::PipePipe => {
                 self.consume();
                 Some(BinaryOperator::BinaryOr)
-            }
+            },
+            Token::EqualEqual => {
+                self.consume();
+                Some(BinaryOperator::Equal)
+            },
+            Token::BangEqual => {
+                self.consume();
+                Some(BinaryOperator::NotEqual)
+            },
+            Token::Greater => {
+                self.consume();
+                Some(BinaryOperator::GreaterThan)
+            },
+            Token::GreaterEqual => {
+                self.consume();
+                Some(BinaryOperator::GreaterThanOrEqual)
+            },
+            Token::Less => {
+                self.consume();
+                Some(BinaryOperator::LessThan)
+            },
+            Token::LessEqual => {
+                self.consume();
+                Some(BinaryOperator::LessThanOrEqual)
+            },
             _ => None,
         }
     }

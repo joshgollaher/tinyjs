@@ -21,7 +21,8 @@ fn main() {
     let contents = fs::read_to_string(file).expect("Something went wrong reading the file");
 
     let tokens = Lexer::new(&contents).lex();
-    println!("{:?}", tokens);
-    
+    // println!("{:?}", tokens);
+
     let ast = AST::from_tokens(tokens);
+    println!("{:#?}", ast);
 }
