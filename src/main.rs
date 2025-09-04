@@ -26,11 +26,12 @@ fn main() {
     // println!("{:?}", tokens);
 
     let ast = AST::new(tokens);
-    println!("{:#?}", ast);
+    // println!("{:#?}", ast);
 
     let mut optim = Optimizer::new(ast);
     let ast = optim.optimize();
 
     let mut interpreter = Interpreter::new(ast);
     interpreter.run();
+    println!("{:#?}", interpreter.scope);
 }

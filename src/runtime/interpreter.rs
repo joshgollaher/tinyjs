@@ -2,7 +2,7 @@ use crate::parser::{BinaryOperator, Expression, Literal, Statement, UnaryOperato
 use crate::runtime::scope::Scope;
 
 pub struct Interpreter {
-    scope: Scope,
+    pub(crate) scope: Scope,
     ast: AST
 }
 
@@ -241,7 +241,7 @@ impl Interpreter {
                     _ => panic!("Expected array, got {:?}", target)
                 };
 
-                if index >= arr.len() || index < 0 {
+                if index >= arr.len() {
                     panic!("Index out of bounds: {index}");
                 }
                 *arr[index].clone()

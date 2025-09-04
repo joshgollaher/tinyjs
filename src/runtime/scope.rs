@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use crate::parser::Literal;
 
+#[derive(Debug)]
 pub struct Scope {
     scopes: Vec<HashMap<String, Literal>>
 }

@@ -82,7 +82,7 @@ impl Lexer {
     fn lex_numeric(&mut self) -> Token {
         let mut number = String::new();
 
-        while self.peek().is_some() && self.peek().unwrap().is_digit(10) {
+        while self.peek().is_some() && (self.peek().unwrap().is_digit(10) || self.peek().unwrap() == '.') {
             number.push(self.consume().unwrap());
         }
 
