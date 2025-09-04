@@ -146,29 +146,112 @@ impl Interpreter {
             },
             Expression::Array {
                 elements
-            } => {},
+            } => {
+                Literal::Array(elements.iter().map(|el| self.do_expression(*el.clone()).into() ).collect())
+            },
             Expression::Assignment {
                 target,
                 value
             } => {
+                match *target {
+                    Expression::Identifier(name) => {
+                        let res = self.do_expression(*value);
+                        self.scope.set(name, res.clone());
+                        res
+                    },
+                    Expression::Index {
+                        target,
+                        index
+                    } => {
+                        match *target {
+                            Expression::Identifier(name) => {
+                                let res = self.do_expression(*value);
+                                let arr = self.scope.get(name.clone()).expect(format!("Unknown identifier '{}'", name.clone()).as_str()).clone();
+                                let mut arr = match arr {
+                                    Literal::Array(arr) => arr,
+                                    _ => panic!("Expected array, got {:?}", arr)
+                                };
+                                let index = self.do_expression(*index).clone();
+                                let index = match index {
+                                    Literal::Number(index) => index as usize,
+                                    _ => panic!("Expected number, got {:?}", index)
+                                };
 
+                                arr[index] = res.into();
+                                self.scope.set(name.clone(), Literal::Array(arr.clone()));
+                                Literal::Array(arr)
+                            },
+                            _ => panic!("Expected identifier, got {:?}", target)
+                        }
+                    },
+                    Expression::Property {
+                        target,
+                        name
+                    } => {
+                        match *target {
+                            Expression::Identifier(obj_name) => {
+                                let res = self.do_expression(*value);
+                                let obj = self.scope.get(obj_name.clone()).expect(format!("Unknown identifier '{}'", obj_name.clone()).as_str()).clone();
+                                let mut obj = match obj {
+                                    Literal::Object(obj) => obj,
+                                    _ => panic!("Expected object, got {:?}", obj)
+                                };
+
+                                for i in 0..obj.len() {
+                                    if obj[i].0 == name {
+                                        obj[i] = (name.clone(), res.clone().into());
+                                        self.scope.set(obj_name.clone(), Literal::Object(obj.clone()));
+                                        return Literal::Object(obj);
+                                    }
+                                }
+
+                                // Not found, add it
+                                obj.push((name.clone(), res.clone().into()));
+                                self.scope.set(obj_name.clone(), Literal::Object(obj.clone()));
+                                res
+                            }
+                            _ => panic!("Expected identifier, got {:?}", target)
+                        }
+                    },
+                    _ => panic!("Expected identifier, got {:?}", target)
+                }
             },
             Expression::FunctionCall {
                 name,
                 args
             } => {
-
+                todo!()
             },
             Expression::Index {
                 target,
                 index
             } => {
+                let index = self.do_expression(*index);
+                let target = match *target {
+                    Expression::Identifier(name) => self.scope.get(name.clone()).expect(format!("Unknown identifier '{}'", name.clone()).as_str()).clone(),
+                    _ => panic!("Expected identifier, got {:?}", target)
+                };
+                let index = match index {
+                    Literal::Number(index) => index as usize,
+                    _ => panic!("Expected number, got {:?}", index)
+                };
 
+                let arr = match target {
+                    Literal::Array(arr) => arr,
+                    _ => panic!("Expected array, got {:?}", target)
+                };
+
+                if index >= arr.len() || index < 0 {
+                    panic!("Index out of bounds: {index}");
+                }
+                *arr[index].clone()
             },
             Expression::Object {
                 properties
             } => {
-
+                Literal::Object(properties.into_iter().map(|(name, val)| {
+                    (name, self.do_expression(*val).into())
+                }).collect())
             },
             Expression::UnaryOp {
                 op,
@@ -247,7 +330,10 @@ impl Interpreter {
                 args,
                 body
             } => {
-                todo!();
+                self.scope.set(name, Literal::Function {
+                    args,
+                    body
+                });
             }
             Statement::Expression(expr) => {
                 self.do_expression(*expr);
@@ -260,7 +346,7 @@ impl Interpreter {
                 self.scope.set(name, res);
             }
             Statement::Return(expr) => {
-
+                todo!();
             }
             Statement::While {
                 condition,

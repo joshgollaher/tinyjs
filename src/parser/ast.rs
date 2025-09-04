@@ -1,7 +1,7 @@
 use crate::lexer::Token;
 use crate::parser::parser::Parser;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BinaryOperator {
     Add,
     Sub,
@@ -17,7 +17,7 @@ pub enum BinaryOperator {
     NotEqual,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
     Negate,
     Not,
@@ -30,6 +30,12 @@ pub enum Literal {
     Null,
     Boolean(bool),
     Undefined,
+    Array(Vec<Box<Literal>>),
+    Object(Vec<(String, Box<Literal>)>),
+    Function {
+        args: Vec<String>,
+        body: Box<Statement>
+    }
 }
 
 impl Literal {
@@ -40,11 +46,14 @@ impl Literal {
             Literal::Null => false,
             Literal::Boolean(b) => *b,
             Literal::Undefined => false,
+            Literal::Array(a) => !a.is_empty(),
+            Literal::Object(o) => !o.is_empty(),
+            Literal::Function { .. } => true,
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Literal(Literal),
     Identifier(String),
@@ -81,7 +90,7 @@ pub enum Expression {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     Expression(Box<Expression>),
     Return(Box<Expression>),
