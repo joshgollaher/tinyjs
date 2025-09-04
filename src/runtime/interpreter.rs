@@ -28,16 +28,13 @@ impl Interpreter {
 
                 match op {
                     BinaryOperator::Add => { // FIXME: Support strings
-                        let left = match left {
-                            Literal::Number(left) => left,
-                            _ => panic!("Expected number, got {:?}", left)
-                        };
-                        let right = match right {
-                            Literal::Number(right) => right,
-                            _ => panic!("Expected number, got {:?}", right)
-                        };
-
-                        Literal::Number(left + right)
+                        match (left, right) {
+                            (Literal::Number(l), Literal::Number(r)) => Literal::Number(l + r),
+                            (Literal::String(l), Literal::String(r)) => Literal::String(l + &r),
+                            (Literal::String(l), Literal::Number(r)) => Literal::String(format!("{}{}", l, r)),
+                            (Literal::Number(l), Literal::String(r)) => Literal::String(format!("{}{}", l, r)),
+                            (l, r) => panic!("Unsupported operands for Add: {:?} and {:?}", l, r),
+                        }
                     },
                     BinaryOperator::Sub => {
                         let left = match left {
@@ -395,6 +392,7 @@ impl Interpreter {
                 self.scope.set(name, res);
             }
             Statement::Return(expr) => {
+                // FIXME: Right now we don't verify that this is in a function.
                 let val = self.do_expression(*expr);
                 return Some(val);
             }
