@@ -41,8 +41,8 @@ pub enum Literal {
 impl Literal {
     pub(crate) fn truthy(&self) -> bool {
         match self {
-            Literal::Number(n) => *n != 0.,
-            Literal::String(_) => true,
+            Literal::Number(n) => *n != 0. && !(*n).is_nan(),
+            Literal::String(s) => s.len() > 0,
             Literal::Null => false,
             Literal::Boolean(b) => *b,
             Literal::Undefined => false,

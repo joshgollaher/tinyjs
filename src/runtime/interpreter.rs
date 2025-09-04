@@ -220,7 +220,31 @@ impl Interpreter {
                 name,
                 args
             } => {
-                todo!()
+                let func = self.scope.get(name.clone()).unwrap_or_else(|| panic!("Unknown function '{}'", name));
+                match func {
+                    Literal::Function {
+                        args: func_args,
+                        body
+                    } => {
+                        if func_args.len() != args.len() {
+                            panic!("Expected {} arguments, got {}", func_args.len(), args.len());
+                        }
+
+                        self.scope.enter();
+
+                        for (param_name, param_expr) in func_args.iter().zip(args.iter()) {
+                            let val = self.do_expression(*param_expr.clone());
+                            self.scope.set(param_name.clone(), val);
+                        }
+
+                        let ret = self.do_statement(*body);
+
+                        self.scope.exit();
+
+                        ret.unwrap_or(Literal::Undefined)
+                    }
+                    _ => panic!("Expected function, got {:?}", func)
+                }
             },
             Expression::Index {
                 target,
@@ -276,7 +300,7 @@ impl Interpreter {
         }
     }
 
-    fn do_statement(&mut self, stmt: Statement) {
+    fn do_statement(&mut self, stmt: Statement) -> Option<Literal> {
         match stmt {
             Statement::For {
                 init,
@@ -287,8 +311,8 @@ impl Interpreter {
                 // Enter scope for the for header
                 self.scope.enter();
                 if let Some(init) = init {
-                    self.do_statement(*init)
-                }
+                    self.do_statement(*init);
+                };
 
                 loop {
                     if let Some(condition) = &condition {
@@ -311,7 +335,11 @@ impl Interpreter {
             } => {
                 self.scope.enter();
                 for stmt in statements {
-                    self.do_statement(stmt);
+                    let res = self.do_statement(stmt);
+                    if res.is_some() {
+                        self.scope.exit();
+                        return res;
+                    }
                 }
                 self.scope.exit()
             }
@@ -347,7 +375,8 @@ impl Interpreter {
                 self.scope.set(name, res);
             }
             Statement::Return(expr) => {
-                todo!();
+                let val = self.do_expression(*expr);
+                return Some(val);
             }
             Statement::While {
                 condition,
@@ -360,6 +389,8 @@ impl Interpreter {
 
             stmt => panic!("Unknown statement: {:?}", stmt)
         }
+
+        None
     }
 
     pub fn run(&mut self) {
