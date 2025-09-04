@@ -106,6 +106,37 @@ impl Builtins {
         Literal::Array(Rc::new(RefCell::new(keys))).into()
     }
 
+    /* Math */
+    fn math_sqrt(args: Vec<Box<Literal>>) -> Box<Literal> {
+        if args.len() != 1 {
+            panic!("Math.sqrt takes exactly one argument");
+        }
+
+        let num = args[0].clone();
+        let num = match *num {
+            Literal::Number(n) => n,
+            _ => panic!("Math.sqrt called on non-number")
+        };
+
+        Literal::Number(num.sqrt()).into()
+    }
+
+    fn math_max(args: Vec<Box<Literal>>) -> Box<Literal> {
+        if args.len() <= 1 {
+            panic!("Math.max takes at least two arguments");
+        }
+
+        let nums: Vec<f64> = args.iter().map(|n| {
+            match **n {
+                Literal::Number(n) => n,
+                _ => panic!("Math.max called on non-number")
+            }
+        }).collect();
+
+
+        Literal::Number(nums.into_iter().reduce(f64::max).unwrap()).into()
+    }
+
     pub fn new() -> Self {
         let mut funcs = HashMap::new();
 
@@ -120,6 +151,11 @@ impl Builtins {
 
         funcs.insert("Object".into(), Literal::Object(vec![
             ("keys".into(), Literal::NativeFunction(NativeFn::new("Object.keys".into(), Rc::new(Self::object_keys))).into())
+        ]));
+
+        funcs.insert("Math".into(), Literal::Object(vec![
+            ("sqrt".into(), Literal::NativeFunction(NativeFn::new("Math.sqrt".into(), Rc::new(Self::math_sqrt))).into()),
+            ("max".into(), Literal::NativeFunction(NativeFn::new("Math.max".into(), Rc::new(Self::math_max))).into())
         ]));
 
         let mut array_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
