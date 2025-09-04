@@ -1,40 +1,37 @@
-// Variables and arithmetic
 let x = 5;
 let y = 2;
-let z = x * y + 3;
+let z = (x * y) + 3;
+let f = 3.14159;
 
-// Conditionals
+
 if (z > 10) {
-    z = z - 1;
+    z = z + 1000;
 } else {
-    z = z + 1;
+    z = z - 1000;
 }
 
-// Loops
 let sum = 0;
 for (let i = 0; i < 5; i = i + 1) {
     sum = sum + i;
 }
-
+//
 let n = 3;
 while (n > 0) {
     sum = sum + n;
     n = n - 1;
 }
 
-// Functions
 function square(v) {
     return v * v;
 }
 
 let squared = square(4);
 
-// Arrays
 let arr = [1, 2, 3];
 arr[1] = arr[1] + 10;
 let first = arr[0];
 
-// Objects
+
 let person = {
     name: "Alice",
     age: 30
@@ -55,3 +52,6 @@ let output = [
     "first = " + first,
     description
 ];
+
+
+console.log(intrinsics.typeof(output));

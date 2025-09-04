@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use crate::parser::Literal;
 use crate::runtime::Scope;
 
@@ -24,7 +25,6 @@ impl Builtins {
             Literal::Array(_) => "[array]".into(),
             Literal::Function { .. } => "[function]".into(),
             Literal::NativeFunction(_) => "[native function]".into(),
-            _ => panic!("console.log takes a string")
         };
 
         println!("{}", str_content);
@@ -42,6 +42,26 @@ impl Builtins {
         Literal::Undefined.into()
     }
 
+    fn intrinsics_typeof(args: Vec<Box<Literal>>) -> Box<Literal> {
+        if args.len() != 1 {
+            panic!("typeof takes exactly one argument");
+        }
+
+        Literal::String(
+            match *args[0] {
+                Literal::String(_) => "string".into(),
+                Literal::Number(_) => "number".into(),
+                Literal::Boolean(_) => "boolean".into(),
+                Literal::Null => "null".into(),
+                Literal::Undefined => "undefined".into(),
+                Literal::Object(_) => "object".into(),
+                Literal::Array(_) => "array".into(),
+                Literal::Function { .. } => "function".into(),
+                Literal::NativeFunction(_) => "native function".into(),
+            }
+        ).into()
+    }
+
 
     pub fn new() -> Self {
         let mut funcs = HashMap::new();
@@ -51,7 +71,8 @@ impl Builtins {
         ]));
 
         funcs.insert("intrinsics".into(), Literal::Object(vec![
-            ("dump".into(), Literal::NativeFunction(Self::intrinsics_dump).into())
+            ("dump".into(), Literal::NativeFunction(Self::intrinsics_dump).into()),
+            ("typeof".into(), Literal::NativeFunction(Self::intrinsics_typeof).into())
         ]));
 
         Self {

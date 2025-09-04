@@ -286,6 +286,10 @@ impl Parser {
                 self.consume();
                 Some(BinaryOperator::Div)
             }
+            Token::Percent => {
+                self.consume();
+                Some(BinaryOperator::Mod)
+            }
             Token::AmpAmp => {
                 self.consume();
                 Some(BinaryOperator::BinaryAnd)

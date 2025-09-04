@@ -159,6 +159,15 @@ impl Lexer {
                         Some(Token::Minus)
                     }
                 },
+                '%' => {
+                    self.consume();
+                    if self.peek() == Some('=') {
+                        self.consume();
+                        Some(Token::PercentEqual)
+                    } else {
+                        Some(Token::Percent)
+                    }
+                },
                 '=' => {
                     self.consume();
                     if self.peek() == Some('=') {

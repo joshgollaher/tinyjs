@@ -33,6 +33,8 @@ pub enum Token {
     Plus,
     Minus,
     Star,
+    Percent,
+    PercentEqual,
     SlashEqual,
     PlusEqual,
     MinusEqual,

@@ -141,7 +141,18 @@ impl Interpreter {
 
                         Literal::Boolean(left && right)
                     },
-                    _ => panic!("Unknown binary operator: {:?}", op)
+                    BinaryOperator::Mod => {
+                        let left = match left {
+                            Literal::Number(left) => left,
+                            _ => panic!("Expected number, got {:?}", left)
+                        };
+                        let right = match right {
+                            Literal::Number(right) => right,
+                            _ => panic!("Expected number, got {:?}", right)
+                        };
+
+                        Literal::Number(left % right)
+                    }
                 }
             },
             Expression::Array {
@@ -299,7 +310,6 @@ impl Interpreter {
                         let expr = self.do_expression(*expr);
                         Literal::Boolean(!expr.truthy())
                     }
-                    _ => panic!("Unknown unary operator: {:?}", op)
                 }
             },
             Expression::Property {
@@ -322,7 +332,6 @@ impl Interpreter {
 
                 output
             }
-            _ => panic!("Unknown expression: {:?}", expr)
         }
     }
 
@@ -374,7 +383,7 @@ impl Interpreter {
                 alternative,
                 consequence,
             } => {
-                if(self.do_expression(*condition).truthy()) {
+                if self.do_expression(*condition).truthy() {
                     self.do_statement(*consequence);
                 } else if let Some(alternative) = alternative {
                     self.do_statement(*alternative);

@@ -15,6 +15,7 @@ pub enum BinaryOperator {
     LessThanOrEqual,
     Equal,
     NotEqual,
+    Mod,
 }
 
 #[derive(Debug, Clone, PartialEq)]
