@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use crate::lexer::Token;
 use crate::parser::parser::Parser;
 
@@ -24,6 +26,30 @@ pub enum UnaryOperator {
     Not,
 }
 
+#[derive(Clone)]
+pub struct NativeFn {
+    pub func: Rc<dyn Fn(Vec<Box<Literal>>) -> Box<Literal>>,
+    name: String,
+}
+
+impl NativeFn {
+    pub fn new(name: String, func: Rc<dyn Fn(Vec<Box<Literal>>) -> Box<Literal>>) -> Self {
+        Self { func, name }
+    }
+}
+
+impl std::fmt::Debug for NativeFn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Native Function [{}]", self.name)
+    }
+}
+
+impl PartialEq for NativeFn {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.func, &other.func)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Literal {
     Number(f64),
@@ -31,13 +57,13 @@ pub enum Literal {
     Null,
     Boolean(bool),
     Undefined,
-    Array(Vec<Box<Literal>>),
+    Array(Rc<RefCell<Vec<Box<Literal>>>>),
     Object(Vec<(String, Box<Literal>)>),
     Function {
         args: Vec<String>,
         body: Box<Statement>
     },
-    NativeFunction(fn(Vec<Box<Literal>>) -> Box<Literal>)
+    NativeFunction(NativeFn)
 }
 
 impl Literal {
@@ -48,7 +74,9 @@ impl Literal {
             Literal::Null => false,
             Literal::Boolean(b) => *b,
             Literal::Undefined => false,
-            Literal::Array(a) => !a.is_empty(),
+            Literal::Array(a) => {
+                !a.borrow().is_empty()
+            },
             Literal::Object(o) => !o.is_empty(),
             Literal::Function { .. } => true,
             Literal::NativeFunction(_) => true,

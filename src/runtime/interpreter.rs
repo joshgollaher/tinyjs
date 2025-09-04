@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use crate::parser::{BinaryOperator, Expression, Literal, Statement, UnaryOperator, AST};
 use crate::runtime::builtins::Builtins;
 use crate::runtime::scope::Scope;
@@ -158,7 +160,7 @@ impl Interpreter {
             Expression::Array {
                 elements
             } => {
-                Literal::Array(elements.iter().map(|el| self.do_expression(*el.clone()).into() ).collect())
+                Literal::Array(Rc::new(RefCell::new(elements.iter().map(|el| self.do_expression(*el.clone()).into() ).collect())))
             },
             Expression::Assignment {
                 target,
@@ -188,7 +190,7 @@ impl Interpreter {
                                     _ => panic!("Expected number, got {:?}", index)
                                 };
 
-                                arr[index] = res.into();
+                                arr.borrow_mut()[index] = res.into();
                                 self.scope.set(name.clone(), Literal::Array(arr.clone()));
                                 Literal::Array(arr)
                             },
@@ -258,7 +260,7 @@ impl Interpreter {
                     Literal::NativeFunction(f) => {
                         let args = args.into_iter().map(|arg| self.do_expression(*arg).into()).collect::<Vec<_>>();
 
-                        *f(args)
+                        *(f.func)(args)
                     }
                     _ => panic!("Expected function, got {:?}", func)
                 }
@@ -282,10 +284,10 @@ impl Interpreter {
                     _ => panic!("Expected array, got {:?}", target)
                 };
 
-                if index >= arr.len() {
+                if index >= arr.borrow().len() {
                     panic!("Index out of bounds: {index}");
                 }
-                *arr[index].clone()
+                *arr.borrow()[index].clone()
             },
             Expression::Object {
                 properties
@@ -317,20 +319,28 @@ impl Interpreter {
                 name
             } => {
                 let target = self.do_expression(*target);
-                let target = match target {
-                    Literal::Object(properties) => properties,
+                match target {
+                    Literal::Object(properties) => {
+                        let mut output = Literal::Undefined;
+                        for (prop_name, val) in properties {
+                            if *prop_name == name {
+                                output = *val.clone();
+                                break;
+                            }
+                        }
+
+                        output
+                    },
+                    Literal::Array(arr) => {
+                        let func = self.builtins.array_builtin(
+                            Literal::Array(arr).into(),
+                            name.clone()
+                        );
+
+                        *func
+                    },
                     _ => panic!("Expected object, got {:?}", target)
-                };
-
-                let mut output = Literal::Undefined;
-                for (prop_name, val) in target.iter() {
-                    if *prop_name == name {
-                        output = *val.clone();
-                        break;
-                    }
                 }
-
-                output
             }
         }
     }
