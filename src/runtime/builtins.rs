@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -88,6 +89,23 @@ impl Builtins {
         Literal::Number(arr.borrow().len() as f64).into()
     }
 
+    /* Objects */
+    fn object_keys(args: Vec<Box<Literal>>) -> Box<Literal> {
+        if args.len() != 1 {
+            panic!("object.keys takes exactly one argument");
+        }
+
+        let obj = args[0].clone();
+        let obj = match *obj {
+            Literal::Object(obj) => obj,
+            _ => panic!("object.keys called on non-object")
+        };
+
+        let keys = obj.iter().map(|(k, _)| Box::new(Literal::String(k.clone()))).collect();
+
+        Literal::Array(Rc::new(RefCell::new(keys))).into()
+    }
+
     pub fn new() -> Self {
         let mut funcs = HashMap::new();
 
@@ -98,6 +116,10 @@ impl Builtins {
         funcs.insert("intrinsics".into(), Literal::Object(vec![
             ("dump".into(), Literal::NativeFunction(NativeFn::new("intrinsics.dump".into(), Rc::new(Self::intrinsics_dump))).into()),
             ("typeof".into(), Literal::NativeFunction(NativeFn::new("intrinsics.typeof".into(), Rc::new(Self::intrinsics_typeof))).into())
+        ]));
+
+        funcs.insert("Object".into(), Literal::Object(vec![
+            ("keys".into(), Literal::NativeFunction(NativeFn::new("Object.keys".into(), Rc::new(Self::object_keys))).into())
         ]));
 
         let mut array_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();

@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_imports)]
 
 use std::{env, fs};
+use std::time::Instant;
 
 mod lexer;
 mod parser;
@@ -23,15 +24,14 @@ fn main() {
     let contents = fs::read_to_string(file).expect("Something went wrong reading the file");
 
     let tokens = Lexer::new(&contents).lex();
-    // println!("{:?}", tokens);
 
     let ast = AST::new(tokens);
-    // println!("{:#?}", ast);
 
     let mut optim = Optimizer::new(ast);
     let ast = optim.optimize();
 
     let mut interpreter = Interpreter::new(ast);
+    let start = Instant::now();
     interpreter.run();
-    // println!("{:#?}", interpreter.scope);
+    println!("Execution finished in {:.2}ms.", start.elapsed().as_micros() as f64 / 1000.0);
 }

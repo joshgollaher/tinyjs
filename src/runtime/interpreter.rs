@@ -180,7 +180,7 @@ impl Interpreter {
                             Expression::Identifier(name) => {
                                 let res = self.do_expression(*value);
                                 let arr = self.scope.get(name.clone()).expect(format!("Unknown identifier '{}'", name.clone()).as_str()).clone();
-                                let mut arr = match arr {
+                                let arr = match arr {
                                     Literal::Array(arr) => arr,
                                     _ => panic!("Expected array, got {:?}", arr)
                                 };
