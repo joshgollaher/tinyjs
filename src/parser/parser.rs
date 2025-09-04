@@ -332,7 +332,7 @@ impl Parser {
                 if matches!(self.peek(), Token::LeftParen) {
                     let args = self.do_args().into_iter().map(Box::new).collect();
                     self.expect(Token::RightParen);
-                    Expression::FunctionCall { name, args }
+                    Expression::FunctionCall { callee: Expression::Identifier(name).into() , args }
                 } else {
                     Expression::Identifier(name)
                 }
@@ -394,6 +394,14 @@ impl Parser {
                     expr = Expression::Property {
                         target: expr.into(),
                         name,
+                    };
+                },
+                Token::LeftParen => {
+                    let args = self.do_args();
+                    self.expect(Token::RightParen);
+                    expr = Expression::FunctionCall {
+                        callee: expr.into(),
+                        args: args.into_iter().map(Box::new).collect(),
                     };
                 }
                 _ => break,

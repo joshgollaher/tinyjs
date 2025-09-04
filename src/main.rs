@@ -33,5 +33,5 @@ fn main() {
 
     let mut interpreter = Interpreter::new(ast);
     interpreter.run();
-    println!("{:#?}", interpreter.scope);
+    // println!("{:#?}", interpreter.scope);
 }

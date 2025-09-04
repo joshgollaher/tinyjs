@@ -1,8 +1,10 @@
 use crate::parser::{BinaryOperator, Expression, Literal, Statement, UnaryOperator, AST};
+use crate::runtime::builtins::Builtins;
 use crate::runtime::scope::Scope;
 
 pub struct Interpreter {
-    pub(crate) scope: Scope,
+    pub scope: Scope,
+    builtins: Builtins,
     ast: AST
 }
 
@@ -10,6 +12,7 @@ impl Interpreter {
     pub(crate) fn new(ast: AST) -> Self {
         Self {
             scope: Scope::new(),
+            builtins: Builtins::new(),
             ast
         }
     }
@@ -27,7 +30,7 @@ impl Interpreter {
                 let right = self.do_expression(*right);
 
                 match op {
-                    BinaryOperator::Add => { // FIXME: Support strings
+                    BinaryOperator::Add => {
                         match (left, right) {
                             (Literal::Number(l), Literal::Number(r)) => Literal::Number(l + r),
                             (Literal::String(l), Literal::String(r)) => Literal::String(l + &r),
@@ -214,10 +217,11 @@ impl Interpreter {
                 }
             },
             Expression::FunctionCall {
-                name,
+                callee,
                 args
             } => {
-                let func = self.scope.get(name.clone()).unwrap_or_else(|| panic!("Unknown function '{}'", name));
+                let func = self.do_expression(*callee);
+
                 match func {
                     Literal::Function {
                         args: func_args,
@@ -239,6 +243,11 @@ impl Interpreter {
                         self.scope.exit();
 
                         ret.unwrap_or(Literal::Undefined)
+                    },
+                    Literal::NativeFunction(f) => {
+                        let args = args.into_iter().map(|arg| self.do_expression(*arg).into()).collect::<Vec<_>>();
+
+                        *f(args)
                     }
                     _ => panic!("Expected function, got {:?}", func)
                 }
@@ -404,8 +413,6 @@ impl Interpreter {
                     self.do_statement(*body.clone());
                 }
             }
-
-            stmt => panic!("Unknown statement: {:?}", stmt)
         }
 
         None
@@ -413,6 +420,7 @@ impl Interpreter {
 
     pub fn run(&mut self) {
         let stmts = self.ast.statements.iter().cloned().collect::<Vec<_>>();
+        self.builtins.load(&mut self.scope);
 
         for stmt in stmts {
             self.do_statement(stmt);

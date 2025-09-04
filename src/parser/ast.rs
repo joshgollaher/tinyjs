@@ -35,7 +35,8 @@ pub enum Literal {
     Function {
         args: Vec<String>,
         body: Box<Statement>
-    }
+    },
+    NativeFunction(fn(Vec<Box<Literal>>) -> Box<Literal>)
 }
 
 impl Literal {
@@ -49,6 +50,7 @@ impl Literal {
             Literal::Array(a) => !a.is_empty(),
             Literal::Object(o) => !o.is_empty(),
             Literal::Function { .. } => true,
+            Literal::NativeFunction(_) => true,
         }
     }
 }
@@ -73,7 +75,7 @@ pub enum Expression {
         expr: Box<Expression>,
     },
     FunctionCall {
-        name: String,
+        callee: Box<Expression>,
         args: Vec<Box<Expression>>,
     },
     Assignment {
