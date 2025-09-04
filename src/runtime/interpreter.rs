@@ -304,6 +304,7 @@ impl Interpreter {
                     }
                 }
 
+                self.scope.exit();
             }
             Statement::Scope {
                 statements

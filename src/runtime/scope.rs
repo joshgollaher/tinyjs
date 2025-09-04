@@ -29,6 +29,15 @@ impl Scope {
 
     pub fn set(&mut self, name: impl AsRef<str>, value: Literal) {
         let key = name.as_ref();
+
+        // Check if exists in a parent scope before creating a new one.
+        for scope in self.scopes.iter_mut().rev() {
+            if scope.contains_key(key) {
+                scope.insert(key.to_string(), value);
+                return;
+            }
+        }
+
         self.scopes.last_mut().unwrap().insert(key.to_string(), value);
     }
 }
