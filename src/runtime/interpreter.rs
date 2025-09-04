@@ -296,6 +296,26 @@ impl Interpreter {
                     _ => panic!("Unknown unary operator: {:?}", op)
                 }
             },
+            Expression::Property {
+                target,
+                name
+            } => {
+                let target = self.do_expression(*target);
+                let target = match target {
+                    Literal::Object(properties) => properties,
+                    _ => panic!("Expected object, got {:?}", target)
+                };
+
+                let mut output = Literal::Undefined;
+                for (prop_name, val) in target.iter() {
+                    if *prop_name == name {
+                        output = *val.clone();
+                        break;
+                    }
+                }
+
+                output
+            }
             _ => panic!("Unknown expression: {:?}", expr)
         }
     }
