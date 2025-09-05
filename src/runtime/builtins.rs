@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ptr::null_mut;
 use std::rc::Rc;
 use std::sync::Arc;
 use crate::parser::{Literal, NativeFn};
@@ -12,6 +13,7 @@ pub struct Builtins {
     /* Type builtins */
     array_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>>,
     string_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>>,
+    number_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>>
 }
 
 impl Builtins {
@@ -178,6 +180,16 @@ impl Builtins {
         )))
     }
 
+    /* Number */
+    fn number_tostring(num: Box<Literal>, _args: Vec<Box<Literal>>) -> Literal {
+        let num = match *num {
+            Literal::Number(n) => n,
+            _ => panic!("Number.toString() called on non-number.")
+        };
+
+        Literal::String(num.to_string()).into()
+    }
+
     /* Objects */
     fn object_keys(args: Vec<Box<Literal>>) -> Box<Literal> {
         if args.len() != 1 {
@@ -257,10 +269,14 @@ impl Builtins {
         let mut string_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
         string_funcs.insert("split".into(), Rc::new(Self::string_split));
 
+        let mut number_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
+        number_funcs.insert("toString".into(), Rc::new(Self::number_tostring));
+
         Self {
             funcs,
             array_funcs,
             string_funcs,
+            number_funcs
         }
     }
 
@@ -287,6 +303,16 @@ impl Builtins {
 
         Literal::NativeFunction(NativeFn::new(format!("String.{name}").into(), Rc::new(move |args| {
             let str = str.clone();
+            func(str, args).into()
+        }))).into()
+    }
+
+    pub fn number_builtin(&self, num: Box<Literal>, name: String) -> Box<Literal> {
+        let func = self.number_funcs.get(&name).unwrap_or_else(|| panic!("Number.{} not found", name));
+        let func = Rc::clone(func);
+
+        Literal::NativeFunction(NativeFn::new(format!("Number.{name}").into(), Rc::new(move |args| {
+            let str = num.clone();
             func(str, args).into()
         }))).into()
     }
