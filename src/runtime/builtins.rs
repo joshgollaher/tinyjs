@@ -127,6 +127,16 @@ impl Builtins {
         Literal::String(str).into()
     }
 
+    fn array_reverse(arr: Box<Literal>, _args: Vec<Box<Literal>>) -> Literal {
+        let arr = match *arr {
+            Literal::Array(arr) => arr,
+            _ => panic!("array.reverse called on non-array")
+        };
+
+        arr.borrow_mut().reverse();
+        Literal::Array(arr).into()
+    }
+
     /* Strings */
     fn string_split(str: Box<Literal>, args: Vec<Box<Literal>>) -> Literal {
         let str = match *str {
