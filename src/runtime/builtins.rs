@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ptr::null_mut;
 use std::rc::Rc;
 use std::sync::Arc;
 use crate::parser::{Literal, NativeFn};
@@ -12,6 +13,7 @@ pub struct Builtins {
     /* Type builtins */
     array_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>>,
     string_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>>,
+    number_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>>
 }
 
 impl Builtins {
@@ -93,6 +95,21 @@ impl Builtins {
         Literal::Number(arr.borrow().len() as f64).into()
     }
 
+    fn array_pop(arr: Box<Literal>, args: Vec<Box<Literal>>) -> Literal {
+        let arr = match *arr {
+            Literal::Array(arr) => arr,
+            _ => panic!("array.push called on non-array")
+        };
+
+        if args.len() != 1 {
+            panic!("array.push takes exactly one argument");
+        }
+
+
+        let lit = arr.borrow_mut().pop().unwrap_or_else(|| panic!("Array.pop called on empty array."));
+        *lit
+    }
+
     fn array_join(arr: Box<Literal>, args: Vec<Box<Literal>>) -> Literal {
         let arr = match *arr {
             Literal::Array(arr) => arr,
@@ -129,8 +146,8 @@ impl Builtins {
 
     fn array_reverse(arr: Box<Literal>, _args: Vec<Box<Literal>>) -> Literal {
         let arr = match *arr {
-            Literal::Array(arr) => arr,
-            _ => panic!("array.reverse called on non-array")
+            Literal::Array(elems) => elems,
+            _ => panic!("Array.reverse() called on non-array.")
         };
 
         arr.borrow_mut().reverse();
@@ -161,6 +178,16 @@ impl Builtins {
         Literal::Array(Rc::new(RefCell::new(
             chars.into_iter().map(|s| Box::new(Literal::String(s))).collect()
         )))
+    }
+
+    /* Number */
+    fn number_tostring(num: Box<Literal>, _args: Vec<Box<Literal>>) -> Literal {
+        let num = match *num {
+            Literal::Number(n) => n,
+            _ => panic!("Number.toString() called on non-number.")
+        };
+
+        Literal::String(num.to_string()).into()
     }
 
     /* Objects */
@@ -235,15 +262,21 @@ impl Builtins {
         let mut array_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
         array_funcs.insert("length".into(), Rc::new(Self::array_length));
         array_funcs.insert("push".into(), Rc::new(Self::array_push));
+        array_funcs.insert("pop".into(), Rc::new(Self::array_pop));
         array_funcs.insert("join".into(), Rc::new(Self::array_join));
+        array_funcs.insert("reverse".into(), Rc::new(Self::array_reverse));
 
         let mut string_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
         string_funcs.insert("split".into(), Rc::new(Self::string_split));
+
+        let mut number_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
+        number_funcs.insert("toString".into(), Rc::new(Self::number_tostring));
 
         Self {
             funcs,
             array_funcs,
             string_funcs,
+            number_funcs
         }
     }
 
@@ -270,6 +303,16 @@ impl Builtins {
 
         Literal::NativeFunction(NativeFn::new(format!("String.{name}").into(), Rc::new(move |args| {
             let str = str.clone();
+            func(str, args).into()
+        }))).into()
+    }
+
+    pub fn number_builtin(&self, num: Box<Literal>, name: String) -> Box<Literal> {
+        let func = self.number_funcs.get(&name).unwrap_or_else(|| panic!("Number.{} not found", name));
+        let func = Rc::clone(func);
+
+        Literal::NativeFunction(NativeFn::new(format!("Number.{name}").into(), Rc::new(move |args| {
+            let str = num.clone();
             func(str, args).into()
         }))).into()
     }

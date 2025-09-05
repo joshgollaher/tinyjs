@@ -346,7 +346,15 @@ impl Interpreter {
                         );
 
                         *func
-                    }
+                    },
+                    Literal::Number(n) => {
+                        let func = self.builtins.number_builtin(
+                            Literal::Number(n).into(),
+                            name.clone()
+                        );
+
+                        *func
+                    },
                     _ => panic!("Expected object, got {:?}", target)
                 }
             }
