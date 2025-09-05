@@ -93,6 +93,40 @@ impl Builtins {
         Literal::Number(arr.borrow().len() as f64).into()
     }
 
+    fn array_join(arr: Box<Literal>, args: Vec<Box<Literal>>) -> Literal {
+        let arr = match *arr {
+            Literal::Array(arr) => arr,
+            _ => panic!("array.join called on non-array")
+        };
+
+        let delim = match args.len() {
+            0 => ",".into(),
+            1 => {
+                let delim = args[0].clone();
+                match *delim {
+                    Literal::String(delim) => delim,
+                    _ => panic!("array.join expects a string as the delimiter")
+                }
+            },
+            _ => panic!("array.join takes at most one argument")
+        };
+
+        let mut str = String::new();
+        for (i, item) in arr.borrow().iter().enumerate() {
+            if i > 0 {
+                str.push_str(&delim);
+            }
+
+            if let Literal::String(s) = *item.clone() {
+                str.push_str(s.as_ref());
+            } else {
+                panic!("array.join expects all elements to be strings");
+            }
+        }
+
+        Literal::String(str).into()
+    }
+
     /* Strings */
     fn string_split(str: Box<Literal>, args: Vec<Box<Literal>>) -> Literal {
         let str = match *str {
@@ -191,6 +225,7 @@ impl Builtins {
         let mut array_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
         array_funcs.insert("length".into(), Rc::new(Self::array_length));
         array_funcs.insert("push".into(), Rc::new(Self::array_push));
+        array_funcs.insert("join".into(), Rc::new(Self::array_join));
 
         let mut string_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
         string_funcs.insert("split".into(), Rc::new(Self::string_split));
