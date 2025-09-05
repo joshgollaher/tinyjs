@@ -6,8 +6,12 @@ use crate::parser::{Literal, NativeFn};
 use crate::runtime::Scope;
 
 pub struct Builtins {
+    /* Global scope objects */
     funcs: HashMap<String, Literal>,
-    array_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>>
+
+    /* Type builtins */
+    array_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>>,
+    string_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>>,
 }
 
 impl Builtins {
@@ -89,6 +93,32 @@ impl Builtins {
         Literal::Number(arr.borrow().len() as f64).into()
     }
 
+    /* Strings */
+    fn string_split(str: Box<Literal>, args: Vec<Box<Literal>>) -> Literal {
+        let str = match *str {
+            Literal::String(str) => str,
+            _ => panic!("string.split called on non-string")
+        };
+
+        let delim = match args.len() {
+            0 => " ".into(),
+            1 => {
+                let delim = args[0].clone();
+                match *delim {
+                    Literal::String(delim) => delim,
+                    _ => panic!("string.split expects a string as the delimiter")
+                }
+            },
+            _ => panic!("string.split takes at most one argument")
+        };
+
+        let chars = str.split(delim.as_str()).map(|s| s.to_owned()).collect::<Vec<_>>();
+
+        Literal::Array(Rc::new(RefCell::new(
+            chars.into_iter().map(|s| Box::new(Literal::String(s))).collect()
+        )))
+    }
+
     /* Objects */
     fn object_keys(args: Vec<Box<Literal>>) -> Box<Literal> {
         if args.len() != 1 {
@@ -162,9 +192,13 @@ impl Builtins {
         array_funcs.insert("length".into(), Rc::new(Self::array_length));
         array_funcs.insert("push".into(), Rc::new(Self::array_push));
 
+        let mut string_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
+        string_funcs.insert("split".into(), Rc::new(Self::string_split));
+
         Self {
             funcs,
-            array_funcs
+            array_funcs,
+            string_funcs,
         }
     }
 
@@ -182,6 +216,16 @@ impl Builtins {
         Literal::NativeFunction(NativeFn::new(format!("Array.{name}").into(), Rc::new(move |args| {
             let arr = arr.clone();
             func(arr, args).into()
+        }))).into()
+    }
+
+    pub fn string_builtin(&self, str: Box<Literal>, name: String) -> Box<Literal> {
+        let func = self.string_funcs.get(&name).unwrap_or_else(|| panic!("String.{} not found", name));
+        let func = Rc::clone(func);
+
+        Literal::NativeFunction(NativeFn::new(format!("String.{name}").into(), Rc::new(move |args| {
+            let str = str.clone();
+            func(str, args).into()
         }))).into()
     }
 }

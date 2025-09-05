@@ -339,6 +339,14 @@ impl Interpreter {
 
                         *func
                     },
+                    Literal::String(str) => {
+                        let func = self.builtins.string_builtin(
+                            Literal::String(str).into(),
+                            name.clone()
+                        );
+
+                        *func
+                    }
                     _ => panic!("Expected object, got {:?}", target)
                 }
             }
