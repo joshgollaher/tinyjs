@@ -93,6 +93,21 @@ impl Builtins {
         Literal::Number(arr.borrow().len() as f64).into()
     }
 
+    fn array_pop(arr: Box<Literal>, args: Vec<Box<Literal>>) -> Literal {
+        let arr = match *arr {
+            Literal::Array(arr) => arr,
+            _ => panic!("array.push called on non-array")
+        };
+
+        if args.len() != 1 {
+            panic!("array.push takes exactly one argument");
+        }
+
+
+        let lit = arr.borrow_mut().pop().unwrap_or_else(|| panic!("Array.pop called on empty array."));
+        *lit
+    }
+
     fn array_join(arr: Box<Literal>, args: Vec<Box<Literal>>) -> Literal {
         let arr = match *arr {
             Literal::Array(arr) => arr,
@@ -125,6 +140,16 @@ impl Builtins {
         }
 
         Literal::String(str).into()
+    }
+
+    fn array_reverse(arr: Box<Literal>, _args: Vec<Box<Literal>>) -> Literal {
+        let arr = match *arr {
+            Literal::Array(elems) => elems,
+            _ => panic!("Array.reverse() called on non-array.")
+        };
+
+        arr.borrow_mut().reverse();
+        Literal::Array(arr).into()
     }
 
     /* Strings */
@@ -225,7 +250,9 @@ impl Builtins {
         let mut array_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
         array_funcs.insert("length".into(), Rc::new(Self::array_length));
         array_funcs.insert("push".into(), Rc::new(Self::array_push));
+        array_funcs.insert("pop".into(), Rc::new(Self::array_pop));
         array_funcs.insert("join".into(), Rc::new(Self::array_join));
+        array_funcs.insert("reverse".into(), Rc::new(Self::array_reverse));
 
         let mut string_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
         string_funcs.insert("split".into(), Rc::new(Self::string_split));
