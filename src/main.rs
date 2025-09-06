@@ -1,7 +1,10 @@
 #![allow(dead_code, unused_imports)]
 
+use std::io::Write;
 use std::{env, fs};
 use std::time::Instant;
+use env_logger::Builder;
+use log::info;
 
 mod lexer;
 mod parser;
@@ -15,6 +18,19 @@ use crate::runtime::{interpreter, Interpreter};
 use crate::optim::Optimizer;
 
 fn main() {
+    Builder::new()
+        .filter(None, log::LevelFilter::Trace)
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "[{}][{}] {}",
+                record.level(),
+                record.target(),
+                record.args()
+            )
+        })
+        .init();
+
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         panic!("Please specify a file to run.");
@@ -29,9 +45,9 @@ fn main() {
 
     let mut optim = Optimizer::new(ast);
     let ast = optim.optimize();
-
+    
     let mut interpreter = Interpreter::new(ast);
     let start = Instant::now();
     interpreter.run();
-    println!("Execution finished in {:.2}ms.", start.elapsed().as_micros() as f64 / 1000.0);
+    info!("Execution finished in {:.2}ms.", start.elapsed().as_micros() as f64 / 1000.0);
 }
