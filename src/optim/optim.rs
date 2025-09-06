@@ -1,10 +1,25 @@
 use std::collections::HashMap;
 use crate::parser::{Expression, Literal, Statement, AST};
 
+#[derive(Clone)]
 enum ConstVal {
     StringLiteral(String),
     Number(f64),
     Boolean(bool),
+}
+
+impl ConstVal {
+    pub fn into_literal(self) -> Literal {
+        match self {
+            ConstVal::StringLiteral(s) => Literal::String(s),
+            ConstVal::Number(n) => Literal::Number(n),
+            ConstVal::Boolean(b) => Literal::Boolean(b),
+        }
+    }
+
+    pub fn into_expression(self) -> Expression {
+        Expression::Literal(self.into_literal())
+    }
 }
 
 pub struct Optimizer {
@@ -24,6 +39,16 @@ impl Optimizer {
         self.constants.last_mut().unwrap().insert(name, value);
     }
 
+    fn get_constant(&self, name: &str) -> Option<ConstVal> {
+        for scope in self.constants.iter().cloned().rev() {
+            if scope.contains_key(name) {
+                return Some(scope.get(name).unwrap().clone());
+            }
+        }
+
+        None
+    }
+
     fn enter(&mut self) {
         self.constants.push(HashMap::new());
     }
@@ -40,7 +65,24 @@ impl Optimizer {
     }
 
     fn propagate_expression(&mut self, expr: Expression) -> Expression {
-        expr
+        match expr {
+            Expression::Literal(l) => Expression::Literal(l),
+            Expression::Identifier(id) => {
+                if let Some(saved_const) = self.get_constant(id.as_str()) {
+                    saved_const.into_expression()
+                } else {
+                    Expression::Identifier(id)
+                }
+            }
+            Expression::Object { .. } => {}
+            Expression::Array { .. } => {}
+            Expression::BinaryOp { .. } => {}
+            Expression::UnaryOp { .. } => {}
+            Expression::FunctionCall { .. } => {}
+            Expression::Assignment { .. } => {}
+            Expression::Index { .. } => {}
+            Expression::Property { .. } => {}
+        }
     }
 
     fn propagate_statement(&mut self, stmt: Statement) -> Statement {
