@@ -74,14 +74,28 @@ impl Optimizer {
                     Expression::Identifier(id)
                 }
             }
-            Expression::Object { .. } => {}
-            Expression::Array { .. } => {}
-            Expression::BinaryOp { .. } => {}
-            Expression::UnaryOp { .. } => {}
-            Expression::FunctionCall { .. } => {}
-            Expression::Assignment { .. } => {}
-            Expression::Index { .. } => {}
-            Expression::Property { .. } => {}
+            Expression::Object { properties } => {
+                let properties = properties.into_iter().map(|(k, v)| (k, self.propagate_expression(*v).into())).collect();
+
+                Expression::Object { properties }
+            },
+            Expression::Array { elements } => {
+                let elements = elements.into_iter().map(|el| self.propagate_expression(*el).into()).collect();
+
+                Expression::Array { elements }
+            }
+            Expression::BinaryOp { left, op, right } => {
+                Expression::BinaryOp { left: self.propagate_expression(*left).into(), op, right: self.propagate_expression(*right).into() }
+            },
+            Expression::UnaryOp { op, expr } => {
+                Expression::UnaryOp { op, expr: self.propagate_expression(*expr).into() }
+            },
+            e @ Expression::FunctionCall { .. } => e,
+            Expression::Assignment { target, value } => {
+                Expression::Assignment { target, value: self.propagate_expression(*value).into() }
+            },
+            e @ Expression::Index { .. } => e,
+            e @ Expression::Property { .. } => e,
         }
     }
 
@@ -98,7 +112,7 @@ impl Optimizer {
             Statement::If { condition, consequence, alternative } => {
                 let condition = self.propagate_expression(*condition);
                 let consequence = self.propagate_statement(*consequence);
-                let alternative = alternative.map(|alt| self.propagate_statement(*alt).into());
+                let alternative = alternative.map(|alt| self.propagate_statement(*alt.clone()).into());
 
                 Statement::If { condition: condition.into(), consequence: consequence.into(), alternative }
             },
@@ -109,9 +123,9 @@ impl Optimizer {
                 Statement::While { condition: condition.into(), body }
             },
             Statement::For { init, condition, update, body } => {
-                let init = init.map(|init| self.propagate_statement(*init).into());
-                let condition = condition.map(|condition| self.propagate_expression(*condition).into());
-                let update = update.map(|update| self.propagate_expression(*update).into());
+                let init = init.map(|init| self.propagate_statement(*init.clone()).into());
+                let condition = condition.map(|condition| self.propagate_expression(*condition.clone()).into());
+                let update = update.map(|update| self.propagate_expression(*update.clone()).into());
                 let body = self.propagate_statement(*body).into();
 
                 Statement::For { init, condition, update, body }

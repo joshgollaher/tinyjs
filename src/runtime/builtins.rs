@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::ptr::null_mut;
 use std::rc::Rc;
 use std::sync::Arc;
+use rand::Rng;
 use crate::parser::{Literal, NativeFn};
 use crate::runtime::Scope;
 
@@ -222,6 +223,13 @@ impl Builtins {
         Literal::Number(num.sqrt()).into()
     }
 
+    fn math_random(_args: Vec<Box<Literal>>) -> Box<Literal> {
+        let mut rng = rand::rng();
+        let val: f64 = rng.random_range(0.0..1.0);
+
+        Literal::Number(val).into()
+    }
+
     fn math_max(args: Vec<Box<Literal>>) -> Box<Literal> {
         if args.len() <= 1 {
             panic!("Math.max takes at least two arguments");
@@ -256,7 +264,8 @@ impl Builtins {
 
         funcs.insert("Math".into(), Literal::Object(vec![
             ("sqrt".into(), Literal::NativeFunction(NativeFn::new("Math.sqrt".into(), Rc::new(Self::math_sqrt))).into()),
-            ("max".into(), Literal::NativeFunction(NativeFn::new("Math.max".into(), Rc::new(Self::math_max))).into())
+            ("max".into(), Literal::NativeFunction(NativeFn::new("Math.max".into(), Rc::new(Self::math_max))).into()),
+            ("random".into(), Literal::NativeFunction(NativeFn::new("Math.random".into(), Rc::new(Self::math_random))).into()),
         ]));
 
         let mut array_funcs: HashMap<String, Rc<dyn Fn(Box<Literal>, Vec<Box<Literal>>) -> Literal>> = HashMap::new();
