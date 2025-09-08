@@ -15,7 +15,7 @@ Inside src are modules for various parts of the interpreter, including:
 - Runtime: Implements the interpreter and supporting code.
 
 Things I'm still implementing:
-- Bytecode generator & VM
+- Bytecode generator & register-based VM
 - Operator precedence (using shunting yard)
 - Classes
 - Better error handling (and storing the source span for each AST node)

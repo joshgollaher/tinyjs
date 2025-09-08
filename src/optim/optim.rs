@@ -259,8 +259,29 @@ impl Optimizer {
         self.ast.statements = stmts;
     }
 
+    fn valid_loop_body(&self, body: &Statement) -> bool {
+        true
+    }
+
     fn unroll_statement(&mut self, stmt: Statement) -> Statement {
-        stmt
+        match stmt {
+            Statement::While { condition, body } => {
+                let mut stmts = vec![];
+
+                Statement::Scope { statements: stmts }.into()
+            },
+            Statement::For { init, condition, update, body } => {
+                let mut stmts = vec![];
+
+                Statement::Scope { statements: stmts }.into()
+            }
+            e @ Statement::Expression(_) => e,
+            e @ Statement::Return(_) => e,
+            Statement::If { condition, consequence, alternative } => Statement::If { condition, consequence: self.unroll_statement(*consequence).into(), alternative: alternative.map(|alt| self.unroll_statement(*alt.clone()).into()) },
+            Statement::Function { name, args, body } => Statement::Function { name, args, body: self.unroll_statement(*body).into() },
+            Statement::Scope { statements } => Statement::Scope { statements: statements.into_iter().map(|stmt| self.unroll_statement(stmt)).collect() },
+            e @ Statement::Let { .. } => e,
+        }
     }
 
     fn loop_unrolling(&mut self) {
