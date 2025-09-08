@@ -27,6 +27,7 @@ impl ConstVal {
 pub struct Optimizer {
     ast: AST,
     constants: Vec<HashMap<String, ConstVal>>,
+    allow_new_constants: bool,
 }
 
 impl Optimizer {
@@ -34,10 +35,15 @@ impl Optimizer {
         Self {
             ast,
             constants: vec![HashMap::new()],
+            allow_new_constants: true
         }
     }
 
     fn mark_constant(&mut self, name: String, value: ConstVal) {
+        if !self.allow_new_constants {
+            return;
+        }
+
         self.constants.last_mut().unwrap().insert(name, value);
     }
 
@@ -51,6 +57,17 @@ impl Optimizer {
         None
     }
 
+    fn remove_constant(&mut self, name: &str) {
+        for scope in self.constants.iter_mut().rev() {
+            if scope.contains_key(name) {
+                scope.remove(name);
+                return;
+            }
+        }
+    }
+
+    fn close_constants(&mut self) { self.allow_new_constants = false; }
+
     fn enter(&mut self) {
         self.constants.push(HashMap::new());
     }
@@ -61,6 +78,9 @@ impl Optimizer {
 
     fn constant_value_propagation(&mut self) {
         let mut stmts = self.ast.statements.clone();
+        // We need to pre-walk the tree before we assign constants.
+        let _ = stmts.clone().into_iter().map(|stmt| self.propagate_statement(stmt));
+        self.close_constants();
         stmts = stmts.into_iter().map(|stmt| self.propagate_statement(stmt)).collect();
 
         self.ast.statements = stmts;
@@ -95,6 +115,12 @@ impl Optimizer {
             },
             e @ Expression::FunctionCall { .. } => e,
             Expression::Assignment { target, value } => {
+                if let Expression::Identifier(id) = *target.clone() {
+                    if let Some(_) = self.get_constant(id.as_str()) {
+                        trace!("Constant {id} changed. Invalidating.");
+                        self.remove_constant(id.as_str());
+                    }
+                }
                 Expression::Assignment { target, value: self.propagate_expression(*value).into() }
             },
             e @ Expression::Index { .. } => e,
@@ -259,21 +285,95 @@ impl Optimizer {
         self.ast.statements = stmts;
     }
 
-    fn valid_loop_body(&self, body: &Statement) -> bool {
-        true
+    fn valid_loop_body(&self, body: Statement) -> bool {
+        // Zero vars inside body, range known AOT
+        match body {
+            Statement::While { condition, .. } => {
+                false
+            },
+            Statement::For { init, condition, update, .. } => {
+                false
+            },
+            _ => panic!("valid_loop_body called on non-loop.")
+        }
+    }
+
+    fn unroll_for(&self, for_stmt: Statement) -> Vec<Statement> {
+
+        let (init, condition, update) = match for_stmt {
+            Statement::For { init, condition, update, .. } => (init, condition, update),
+            _ => panic!("unroll_for called on non-for.")
+        };
+
+        let init = *init.unwrap();
+        let condition = *condition.unwrap();
+        let update = *update.unwrap();
+
+        let (var_name, var_value) = match init {
+            Statement::Let { name, value } => (name, *value),
+            _ => panic!("Unable to unroll for loop with non-let init.")
+        };
+
+        let finished = |var_name: String, var_val: Literal, cond: Expression| {
+            match cond {
+                Expression::BinaryOp { left, op, right } => {
+                    let var = match *left {
+                        Expression::Identifier(id) => id,
+                        _ => panic!("Unable to unroll for loop with non-identifier condition left.")
+                    };
+
+                    if var != var_name {
+                        panic!("Unable to unroll for loop with non-matching left variable name.");
+                    }
+
+                    match (var_val, op, *right) {
+                        (Literal::Number(val), BinaryOperator::LessThan, Expression::Literal(Literal::Number(n))) => {
+                            val < n
+                        },
+                        (Literal::Number(val), BinaryOperator::LessThanOrEqual, Expression::Literal(Literal::Number(n))) => {
+                            val <= n
+                        },
+                        (Literal::Number(val), BinaryOperator::GreaterThan, Expression::Literal(Literal::Number(n))) => {
+                            val > n
+                        },
+                        (Literal::Number(val), BinaryOperator::GreaterThanOrEqual, Expression::Literal(Literal::Number(n))) => {
+                            val >= n
+                        },
+                        _ => panic!("Unable to unroll for loop with non binary-op condition.")
+                    }
+                },
+                _ => panic!("Unable to unroll for loop with non-binary condition.")
+            }
+        };
+
+        let stmts = vec![];
+
+        stmts
+    }
+
+    fn unroll_while(&self, for_stmt: Statement) -> Vec<Statement> {
+        vec![]
     }
 
     fn unroll_statement(&mut self, stmt: Statement) -> Statement {
         match stmt {
             Statement::While { condition, body } => {
-                let mut stmts = vec![];
-
-                Statement::Scope { statements: stmts }.into()
+                let while_stmt = Statement::While { condition: condition.clone(), body: body.clone() };
+                if self.valid_loop_body(while_stmt.clone()) {
+                    let stmts = self.unroll_while(while_stmt.clone());
+                    Statement::Scope { statements: stmts }.into()
+                } else {
+                    while_stmt.clone()
+                }
             },
             Statement::For { init, condition, update, body } => {
-                let mut stmts = vec![];
-
-                Statement::Scope { statements: stmts }.into()
+                let for_stmt = Statement::For { init: init.clone(), condition: condition.clone(), update: update.clone(), body: body.clone() };
+                if self.valid_loop_body(for_stmt.clone()) {
+                    let stmts = self.unroll_for(for_stmt.clone());
+                    Statement::Scope { statements: stmts }.into()
+                } else {
+                    for_stmt.clone()
+                }
             }
             e @ Statement::Expression(_) => e,
             e @ Statement::Return(_) => e,
@@ -305,7 +405,7 @@ impl Optimizer {
         self.constant_folding();
 
         self.tree_shaking();
-        self.loop_unrolling();
+        //self.loop_unrolling();
 
         self.ast.clone()
     }
