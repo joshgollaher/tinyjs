@@ -138,6 +138,8 @@ impl Optimizer {
 
                 ret
             },
+            Statement::Continue => Statement::Continue.into(),
+            Statement::Break => Statement::Break.into(),
             Statement::If { condition, consequence, alternative } => {
                 let condition = self.propagate_expression(*condition);
                 let consequence = self.propagate_statement(*consequence);
@@ -198,6 +200,8 @@ impl Optimizer {
         match stmt {
             Statement::Expression(expr) => Statement::Expression(self.fold_expression(*expr).into()),
             Statement::Return(expr) => Statement::Return(self.fold_expression(*expr).into()),
+            Statement::Continue => Statement::Continue,
+            Statement::Break => Statement::Break,
             Statement::If { condition, consequence, alternative } => Statement::If { condition: self.fold_expression(*condition).into(), consequence: self.fold_statement(*consequence).into(), alternative: alternative.map(|alt| self.fold_statement(*alt.clone()).into()) },
             Statement::While { condition, body } => Statement::While { condition: self.fold_expression(*condition).into(), body: self.fold_statement(*body).into() },
             Statement::For { init, condition, update, body } => {
@@ -285,6 +289,7 @@ impl Optimizer {
         self.ast.statements = stmts;
     }
 
+    #[allow(dead_code, unused_variables)]
     fn valid_loop_body(&self, body: Statement) -> bool {
         // Zero vars inside body, range known AOT
         match body {
@@ -298,6 +303,7 @@ impl Optimizer {
         }
     }
 
+    #[allow(dead_code, unused_variables)]
     fn unroll_for(&self, for_stmt: Statement) -> Vec<Statement> {
 
         let (init, condition, update) = match for_stmt {
@@ -314,7 +320,7 @@ impl Optimizer {
             _ => panic!("Unable to unroll for loop with non-let init.")
         };
 
-        let finished = |var_name: String, var_val: Literal, cond: Expression| {
+        let _finished = |var_name: String, var_val: Literal, cond: Expression| {
             match cond {
                 Expression::BinaryOp { left, op, right } => {
                     let var = match *left {
@@ -351,7 +357,7 @@ impl Optimizer {
         stmts
     }
 
-    fn unroll_while(&self, for_stmt: Statement) -> Vec<Statement> {
+    fn unroll_while(&self, _for_stmt: Statement) -> Vec<Statement> {
         vec![]
     }
 
@@ -377,6 +383,8 @@ impl Optimizer {
             }
             e @ Statement::Expression(_) => e,
             e @ Statement::Return(_) => e,
+            e @ Statement::Continue => e,
+            e @ Statement::Break => e,
             Statement::If { condition, consequence, alternative } => Statement::If { condition, consequence: self.unroll_statement(*consequence).into(), alternative: alternative.map(|alt| self.unroll_statement(*alt.clone()).into()) },
             Statement::Function { name, args, body } => Statement::Function { name, args, body: self.unroll_statement(*body).into() },
             Statement::Scope { statements } => Statement::Scope { statements: statements.into_iter().map(|stmt| self.unroll_statement(stmt)).collect() },
@@ -395,8 +403,15 @@ impl Optimizer {
         self.ast.statements = stmts;
     }
 
-    fn tree_shaking(&mut self) {
+    fn shake_statement(&mut self, stmt: Statement) -> Statement {
+        stmt
+    }
 
+    fn tree_shaking(&mut self) {
+        let stmts = self.ast.statements.clone();
+        let stmts = stmts.into_iter().map(|stmt| self.shake_statement(stmt)).collect();
+
+        self.ast.statements = stmts;
     }
 
     pub fn optimize(&mut self) -> AST {

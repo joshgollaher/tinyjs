@@ -196,6 +196,16 @@ impl Parser {
             Token::While => self.do_while(),
             Token::For => self.do_for(),
             Token::Function => self.do_function(),
+            Token::Break => {
+                self.consume();
+                self.expect(Token::Semicolon);
+                Statement::Break
+            },
+            Token::Continue => {
+                self.consume();
+                self.expect(Token::Semicolon);
+                Statement::Continue
+            }
             Token::LeftBrace => {
                 let statements = self.do_scope();
                 Statement::Scope { statements }

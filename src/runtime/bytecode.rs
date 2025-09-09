@@ -1,4 +1,6 @@
 
+
+
 pub enum Bytecode {
-    
+    StoreGlobal()
 }

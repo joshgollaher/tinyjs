@@ -1,8 +1,15 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use log::trace;
 use crate::parser::{BinaryOperator, Expression, Literal, Statement, UnaryOperator, AST};
 use crate::runtime::builtins::Builtins;
 use crate::runtime::scope::Scope;
+
+pub enum ControlFlow {
+    Return(Box<Literal>),
+    Continue,
+    Break
+}
 
 pub struct Interpreter {
     pub scope: Scope,
@@ -251,7 +258,10 @@ impl Interpreter {
                             self.scope.set(param_name.clone(), val);
                         }
 
-                        let ret = self.do_statement(*body);
+                        let ret = match self.do_statement(*body) {
+                            Some(ControlFlow::Return(val)) => Some(*val),
+                            _ => None,
+                        };
 
                         self.scope.exit();
 
@@ -361,7 +371,7 @@ impl Interpreter {
         }
     }
 
-    fn do_statement(&mut self, stmt: Statement) -> Option<Literal> {
+    fn do_statement(&mut self, stmt: Statement) -> Option<ControlFlow> {
         match stmt {
             Statement::For {
                 init,
@@ -382,7 +392,12 @@ impl Interpreter {
                         }
                     }
 
-                    self.do_statement(*body.clone());
+                    match self.do_statement(*body.clone()) {
+                        Some(ControlFlow::Return(val)) => { return Some(ControlFlow::Return(val)); }
+                        Some(ControlFlow::Continue) => { continue; }
+                        Some(ControlFlow::Break) => { break; }
+                        None => {}
+                    }
 
                     if let Some(update) = &update {
                         self.do_expression(*update.clone());
@@ -397,9 +412,19 @@ impl Interpreter {
                 self.scope.enter();
                 for stmt in statements {
                     let res = self.do_statement(stmt);
-                    if res.is_some() {
-                        self.scope.exit();
-                        return res;
+                    match res {
+                        Some(ControlFlow::Return(val)) => {
+                            self.scope.exit();
+                            return Some(ControlFlow::Return(val));
+                        },
+                        Some(ControlFlow::Continue) => {
+                            return Some(ControlFlow::Continue);
+                        },
+                        Some(ControlFlow::Break) => {
+                            self.scope.exit();
+                            return Some(ControlFlow::Break);
+                        },
+                        _ => {}
                     }
                 }
                 self.scope.exit()
@@ -410,9 +435,9 @@ impl Interpreter {
                 consequence,
             } => {
                 if self.do_expression(*condition).truthy() {
-                    self.do_statement(*consequence);
+                    return self.do_statement(*consequence);
                 } else if let Some(alternative) = alternative {
-                    self.do_statement(*alternative);
+                    return self.do_statement(*alternative);
                 }
             }
             Statement::Function {
@@ -438,16 +463,32 @@ impl Interpreter {
             Statement::Return(expr) => {
                 // FIXME: Right now we don't verify that this is in a function.
                 let val = self.do_expression(*expr);
-                return Some(val);
+                return Some(ControlFlow::Return(val.into()));
+            }
+            Statement::Continue => {
+                return Some(ControlFlow::Continue);
+            },
+            Statement::Break => {
+                return Some(ControlFlow::Break);
             }
             Statement::While {
                 condition,
                 body
             } => {
-                while self.do_expression(*condition.clone()).truthy() {
-                    self.do_statement(*body.clone());
+                loop {
+                    if !self.do_expression(*condition.clone()).truthy() {
+                        break;
+                    }
+
+                    match self.do_statement(*body.clone()) {
+                        Some(ControlFlow::Return(val)) => { return Some(ControlFlow::Return(val)); },
+                        Some(ControlFlow::Break) => { trace!("Breaking out of while loop."); break; },
+                        Some(ControlFlow::Continue) => { continue; }, // This continues the loop
+                        None => {}
+                    }
                 }
             }
+
         }
 
         None

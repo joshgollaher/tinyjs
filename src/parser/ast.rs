@@ -125,6 +125,8 @@ pub enum Expression {
 pub enum Statement {
     Expression(Box<Expression>),
     Return(Box<Expression>),
+    Continue,
+    Break,
     If {
         condition: Box<Expression>,
         consequence: Box<Statement>,

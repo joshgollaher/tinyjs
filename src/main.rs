@@ -53,8 +53,12 @@ fn main() {
         mode
     });
 
-    let file = args[1].clone();
-    let contents = fs::read_to_string(file).expect("Something went wrong reading the file");
+    let contents = match &config.mode {
+        Mode::File(f) => {
+            fs::read_to_string(f).expect("Something went wrong reading the file")
+        }
+        Mode::Interactive => "".into()
+    };
 
     let tokens = Lexer::new(&contents).lex();
 
@@ -63,10 +67,10 @@ fn main() {
     let mut optim = Optimizer::new(ast);
     let ast = optim.optimize();
 
-    println!("{:#?}", ast);
+    // println!("{:#?}", ast);
 
-    // let mut interpreter = Interpreter::new(ast);
-    // let start = Instant::now();
-    // interpreter.run();
-    // info!("Execution finished in {:.2}ms.", start.elapsed().as_micros() as f64 / 1000.0);
+    let mut interpreter = Interpreter::new(ast);
+    let start = Instant::now();
+    interpreter.run();
+    info!("Execution finished in {:.2}ms.", start.elapsed().as_micros() as f64 / 1000.0);
 }
