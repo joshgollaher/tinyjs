@@ -332,6 +332,22 @@ impl Parser {
                 self.consume();
                 Some(BinaryOperator::LessThanOrEqual)
             },
+            Token::PlusEqual => {
+                self.consume();
+                Some(BinaryOperator::PlusEqual)
+            },
+            Token::MinusEqual => {
+                self.consume();
+                Some(BinaryOperator::MinusEqual)
+            },
+            Token::StarEqual => {
+                self.consume();
+                Some(BinaryOperator::MulEqual)
+            },
+            Token::SlashEqual => {
+                self.consume();
+                Some(BinaryOperator::DivEqual)
+            },
             _ => None,
         }
     }
@@ -417,7 +433,19 @@ impl Parser {
                         callee: expr.into(),
                         args: args.into_iter().map(Box::new).collect(),
                     };
-                }
+                },
+                Token::PlusPlus => {
+                    self.consume();
+                    expr = Expression::Increment {
+                        target: expr.into()
+                    };
+                },
+                Token::MinusMinus => {
+                    self.consume();
+                    expr = Expression::Decrement {
+                        target: expr.into()
+                    };
+                },
                 _ => break,
             }
         }

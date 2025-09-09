@@ -146,7 +146,11 @@ impl Lexer {
                     if self.peek() == Some('=') {
                         self.consume();
                         Some(Token::PlusEqual)
-                    } else {
+                    } else if self.peek() == Some('+') {
+                        self.consume();
+                        Some(Token::PlusPlus)
+                    }
+                    else {
                         Some(Token::Plus)
                     }
                 },
@@ -155,7 +159,11 @@ impl Lexer {
                     if self.peek() == Some('=') {
                         self.consume();
                         Some(Token::MinusEqual)
-                    } else {
+                    } else if self.peek() == Some('-') {
+                        self.consume();
+                        Some(Token::MinusMinus)
+                    }
+                    else {
                         Some(Token::Minus)
                     }
                 },

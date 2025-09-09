@@ -51,6 +51,8 @@ pub enum Token {
     AmpAmp,
     Pipe,
     PipePipe,
+    PlusPlus,
+    MinusMinus,
 
     EOF,
 }

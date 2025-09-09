@@ -106,7 +106,9 @@ impl Optimizer {
                 let elements = elements.into_iter().map(|el| self.propagate_expression(*el).into()).collect();
 
                 Expression::Array { elements }
-            }
+            },
+            e @ Expression::Increment { .. } => e,
+            e @ Expression::Decrement { .. } => e,
             Expression::BinaryOp { left, op, right } => {
                 Expression::BinaryOp { left: self.propagate_expression(*left).into(), op, right: self.propagate_expression(*right).into() }
             },
@@ -230,6 +232,8 @@ impl Optimizer {
                     properties: properties.into_iter().map(|(k, v)| (k, self.fold_expression(*v).into())).collect(),
                 }
             },
+            e @ Expression::Increment { .. } => e,
+            e @ Expression::Decrement { .. } => e,
             Expression::Array { elements } => Expression::Array { elements: elements.into_iter().map(|el| self.fold_expression(*el).into()).collect() },
             Expression::BinaryOp { left, op, right } => {
                 match (*left.clone(), op.clone(), *right.clone()) {

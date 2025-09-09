@@ -31,11 +31,11 @@ impl Interpreter {
             Expression::Identifier(name) => self.scope.get(name.clone()).expect(format!("Unknown identifier '{}'", name.clone()).as_str()).clone(),
             Expression::Literal(lit) => lit,
             Expression::BinaryOp {
-                left,
+                left: left_expr,
                 op,
                 right
             } => {
-                let left = self.do_expression(*left);
+                let left = self.do_expression(*left_expr.clone());
                 let right = self.do_expression(*right);
 
                 match op {
@@ -162,12 +162,121 @@ impl Interpreter {
 
                         Literal::Number(left % right)
                     }
+                    BinaryOperator::PlusEqual => {
+                        let var = match *left_expr.clone() {
+                            Expression::Identifier(name) => name,
+                            _ => panic!("Unable to assign to non-lvalue.")
+                        };
+
+                        let val = match (left, right) {
+                            (Literal::Number(l), Literal::Number(r)) => Literal::Number(l + r),
+                            (Literal::String(l), Literal::String(r)) => Literal::String(l + &r),
+                            (Literal::String(l), Literal::Number(r)) => Literal::String(format!("{}{}", l, r)),
+                            (Literal::Number(l), Literal::String(r)) => Literal::String(format!("{}{}", l, r)),
+                            (l, r) => panic!("Unsupported operands for Add: {:?} and {:?}", l, r),
+                        };
+
+                        self.scope.set(var, val.clone());
+
+                        val.clone()
+                    },
+                    BinaryOperator::MinusEqual => {
+                        let var = match *left_expr.clone() {
+                            Expression::Identifier(name) => name,
+                            _ => panic!("Unable to assign to non-lvalue.")
+                        };
+
+                        let left = match left {
+                            Literal::Number(left) => left,
+                            _ => panic!("Expected number, got {:?}", left)
+                        };
+                        let right = match right {
+                            Literal::Number(right) => right,
+                            _ => panic!("Expected number, got {:?}", right)
+                        };
+
+                        let lit = Literal::Number(left - right);
+                        self.scope.set(var, lit.clone());
+                        lit
+                    },
+                    BinaryOperator::MulEqual => {
+                        let var = match *left_expr.clone() {
+                            Expression::Identifier(name) => name,
+                            _ => panic!("Unable to assign to non-lvalue.")
+                        };
+
+                        let left = match left {
+                            Literal::Number(left) => left,
+                            _ => panic!("Expected number, got {:?}", left)
+                        };
+                        let right = match right {
+                            Literal::Number(right) => right,
+                            _ => panic!("Expected number, got {:?}", right)
+                        };
+
+                        let lit = Literal::Number(left * right);
+                        self.scope.set(var, lit.clone());
+                        lit
+                    },
+                    BinaryOperator::DivEqual => {
+                        let var = match *left_expr.clone() {
+                            Expression::Identifier(name) => name,
+                            _ => panic!("Unable to assign to non-lvalue.")
+                        };
+
+                        let left = match left {
+                            Literal::Number(left) => left,
+                            _ => panic!("Expected number, got {:?}", left)
+                        };
+                        let right = match right {
+                            Literal::Number(right) => right,
+                            _ => panic!("Expected number, got {:?}", right)
+                        };
+
+                        let lit = Literal::Number(left / right);
+                        self.scope.set(var, lit.clone());
+                        lit
+                    }
                 }
             },
             Expression::Array {
                 elements
             } => {
                 Literal::Array(Rc::new(RefCell::new(elements.iter().map(|el| self.do_expression(*el.clone()).into() ).collect())))
+            },
+            Expression::Increment {
+                target
+            } => {
+                let var_name = match *target.clone() {
+                    Expression::Identifier(name) => name,
+                    _ => panic!("Expected identifier, got {:?}", target)
+                };
+
+                let val = self.do_expression(*target.clone());
+                let val = match val {
+                    Literal::Number(num) => num,
+                    _ => panic!("Expected number to increment, got {:?}", val)
+                };
+
+                self.scope.set(var_name, Literal::Number(val + 1.0));
+                Literal::Number(val)
+            },
+            Expression::Decrement {
+                target
+            } => {
+                let var_name = match *target.clone() {
+                    Expression::Identifier(name) => name,
+                    _ => panic!("Expected identifier, got {:?}", target)
+                };
+
+                let val = self.do_expression(*target.clone());
+                let val = match val {
+                    Literal::Number(num) => num,
+                    _ => panic!("Expected number to decrement, got {:?}", val)
+                };
+
+                self.scope.set(var_name, Literal::Number(val - 1.0));
+                Literal::Number(val)
             },
             Expression::Assignment {
                 target,

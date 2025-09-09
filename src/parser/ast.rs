@@ -18,6 +18,10 @@ pub enum BinaryOperator {
     Equal,
     NotEqual,
     Mod,
+    PlusEqual,
+    MinusEqual,
+    MulEqual,
+    DivEqual
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -119,6 +123,12 @@ pub enum Expression {
         target: Box<Expression>,
         name: String,
     },
+    Increment {
+        target: Box<Expression>,
+    },
+    Decrement {
+        target: Box<Expression>,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
