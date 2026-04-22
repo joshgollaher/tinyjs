@@ -1,4 +1,4 @@
-
+use crate::parser::BinaryOperator;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
@@ -64,6 +64,25 @@ impl Token {
         match self {
             Token::PlusEqual | Token::MinusEqual | Token::StarEqual | Token::SlashEqual => true,
             _ => false,
+        }
+    }
+
+    pub fn as_binary_operator(&self) -> Option<BinaryOperator> {
+        match self {
+            Token::Plus => Some(BinaryOperator::Add),
+            Token::Minus => Some(BinaryOperator::Sub),
+            Token::Star => Some(BinaryOperator::Mul),
+            Token::Slash => Some(BinaryOperator::Div),
+            Token::Percent => Some(BinaryOperator::Mod),
+            Token::Amp => Some(BinaryOperator::BinaryAnd),
+            Token::Pipe => Some(BinaryOperator::BinaryOr),
+            Token::EqualEqual => Some(BinaryOperator::Equal),
+            Token::BangEqual => Some(BinaryOperator::NotEqual),
+            Token::Greater => Some(BinaryOperator::GreaterThan),
+            Token::GreaterEqual => Some(BinaryOperator::GreaterThanOrEqual),
+            Token::Less => Some(BinaryOperator::LessThan),
+            Token::LessEqual => Some(BinaryOperator::LessThanOrEqual),
+            _ => None,
         }
     }
 }

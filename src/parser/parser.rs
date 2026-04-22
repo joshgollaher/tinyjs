@@ -42,7 +42,7 @@ impl Parser {
     fn do_if(&mut self) -> Statement {
         self.consume(); // if
         self.expect(Token::LeftParen);
-        let condition = self.expression();
+        let condition = self.expression(0);
         self.expect(Token::RightParen);
 
         let consequence = self.statement();
@@ -74,7 +74,7 @@ impl Parser {
             value = Expression::Literal(Literal::Undefined);
         } else {
             self.expect(Token::Equal);
-            value = self.expression();
+            value = self.expression(0);
         }
         self.expect(Token::Semicolon);
 
@@ -87,7 +87,7 @@ impl Parser {
     fn do_while(&mut self) -> Statement {
         self.expect(Token::While);
         self.expect(Token::LeftParen);
-        let condition = self.expression();
+        let condition = self.expression(0);
         self.expect(Token::RightParen);
         let body = self.statement();
         Statement::While {
@@ -108,14 +108,14 @@ impl Parser {
         // statement() already handled the semicolon.
 
         let condition = if self.peek() != Token::Semicolon {
-            Some(self.expression())
+            Some(self.expression(0))
         } else {
             None
         };
         self.expect(Token::Semicolon);
 
         let update = if self.peek() != Token::Semicolon {
-            Some(self.expression())
+            Some(self.expression(0))
         } else {
             None
         };
@@ -261,7 +261,7 @@ impl Parser {
                 if self.peek() == Token::Semicolon {
                     Statement::Return(Box::new(Expression::Literal(Literal::Undefined)))
                 } else {
-                    let expr = self.expression();
+                    let expr = self.expression(0);
                     self.expect(Token::Semicolon);
                     Statement::Return(Box::new(expr))
                 }
@@ -287,7 +287,7 @@ impl Parser {
                 Statement::Scope { statements }
             }
             _ => {
-                let expr = self.expression();
+                let expr = self.expression(0);
                 self.expect(Token::Semicolon);
                 Statement::Expression(Box::new(expr))
             }
@@ -299,7 +299,7 @@ impl Parser {
         self.expect(Token::LeftParen);
         if self.peek() != Token::RightParen {
             loop {
-                args.push(self.expression());
+                args.push(self.expression(0));
                 if self.peek() == Token::RightParen {
                     break;
                 }
@@ -314,7 +314,7 @@ impl Parser {
         let mut elements = Vec::new();
         if self.peek() != Token::RightBracket {
             loop {
-                elements.push(self.expression());
+                elements.push(self.expression(0));
                 if self.peek() == Token::RightBracket {
                     break;
                 }
@@ -338,7 +338,7 @@ impl Parser {
                     ),
                 };
                 self.expect(Token::Colon);
-                let value = self.expression();
+                let value = self.expression(0);
 
                 properties.push((key, Box::new(value)));
 
@@ -415,12 +415,17 @@ impl Parser {
     fn infix_binding_power(&self, token: &Token) -> Option<(u8, u8)> {
         match token {
             Token::PipePipe => Some((1, 2)),
+            Token::AmpAmp => Some((3, 4)),
+            Token::EqualEqual | Token::BangEqual => Some((5, 6)),
+            Token::Less | Token::LessEqual | Token::Greater | Token::GreaterEqual => Some((7, 8)),
+            Token::Plus | Token::Minus => Some((9, 10)),
+            Token::Star | Token::Slash | Token::Percent => Some((11, 12)),
             _ => None
         }
     }
 
     // Base case for all expressions
-    fn expression(&mut self) -> Expression {
+    fn expression(&mut self, min_bp: u8) -> Expression {
         let mut expr = match self.consume() {
             Token::Number(n) => Expression::Literal(Literal::Number(n)),
             Token::StringLiteral(s) => Expression::Literal(Literal::String(s)),
@@ -444,10 +449,10 @@ impl Parser {
                 let mut params = vec![];
 
                 while self.peek() != Token::RightParen {
-                    params.push(self.expression());
+                    params.push(self.expression(0));
                     if self.peek() == Token::Comma {
                         self.consume();
-                        params.push(self.expression());
+                        params.push(self.expression(0));
                     }
                 }
 
@@ -463,7 +468,7 @@ impl Parser {
             Token::Null => Expression::Literal(Literal::Null),
             Token::Undefined => Expression::Literal(Literal::Undefined),
             Token::LeftParen => {
-                let expr = self.expression();
+                let expr = self.expression(0);
                 self.expect(Token::RightParen);
                 expr
             }
@@ -477,14 +482,14 @@ impl Parser {
                 Expression::Object { properties }
             },
             Token::Minus => {
-                let expr = self.expression();
+                let expr = self.expression(0);
                 Expression::UnaryOp {
                     op: UnaryOperator::Negate,
                     expr: expr.into(),
                 }
             }
             Token::Bang => {
-                let expr = self.expression();
+                let expr = self.expression(0);
                 Expression::UnaryOp {
                     op: UnaryOperator::Not,
                     expr: expr.into(),
@@ -498,7 +503,7 @@ impl Parser {
             match self.peek() {
                 Token::LeftBracket => {
                     self.consume();
-                    let index = self.expression();
+                    let index = self.expression(0);
                     self.expect(Token::RightBracket);
                     expr = Expression::Index {
                         target: expr.into(),
@@ -544,7 +549,7 @@ impl Parser {
         // Assignment
         if self.peek() == Token::Equal || self.peek().is_assignment_operator() {
             let t = self.consume();
-            let value = self.expression();
+            let value = self.expression(0);
 
             let op = if t.is_assignment_operator() {
                 match t {
@@ -566,14 +571,25 @@ impl Parser {
         }
 
         // Infix operators
-        // FIXME: This does not handle operator precedence.
-        while let Some(op) = self.match_infix_operators() {
-            let rhs = self.expression();
-            expr = Expression::BinaryOp {
-                left: expr.into(),
-                op,
-                right: rhs.into(),
-            };
+        loop {
+            let next_tok = self.peek();
+            if let Some((lb, rb)) = self.infix_binding_power(&next_tok) {
+                if lb < min_bp {
+                    break;
+                }
+
+                self.consume();
+                let bin_op = next_tok.as_binary_operator().unwrap();
+                let rhs = self.expression(rb);
+
+                expr = Expression::BinaryOp {
+                    left: expr.into(),
+                    op: bin_op,
+                    right: rhs.into(),
+                };
+            } else {
+                break;
+            }
         }
 
         expr
