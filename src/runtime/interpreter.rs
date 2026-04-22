@@ -14,7 +14,7 @@ pub enum ControlFlow {
 pub struct Interpreter {
     pub scope: Scope,
     builtins: Builtins,
-    ast: AST
+    pub ast: AST
 }
 
 impl Interpreter {
@@ -23,6 +23,35 @@ impl Interpreter {
             scope: Scope::new(),
             builtins: Builtins::new(),
             ast
+        }
+    }
+
+    fn apply_binary_op(&self, op: BinaryOperator, left: Literal, right: Literal) -> Literal {
+        match op {
+            BinaryOperator::Add => match (&left, &right) {
+                (Literal::String(s1), Literal::String(s2)) => Literal::String(s1.clone() + s2.as_str()),
+                (Literal::Number(n1), Literal::Number(n2)) => Literal::Number(n1 + n2),
+                (Literal::String(s1), Literal::Number(n1)) => Literal::String(format!("{}{}", s1, n1)),
+                (Literal::Number(n1), Literal::String(s1)) => Literal::String(format!("{}{}", n1, s1)),
+                _ => panic!("Unsupported binary operation: {:?} {:?} {:?}", left, op, right)
+            },
+            BinaryOperator::Sub => match (&left, &right) {
+                (Literal::Number(n1), Literal::Number(n2)) => Literal::Number(n1 - n2),
+                _ => panic!("Unsupported binary operation: {:?} {:?} {:?}", left, op, right)
+            },
+            BinaryOperator::Mul => match (&left, &right) {
+                (Literal::Number(n1), Literal::Number(n2)) => Literal::Number(n1 * n2),
+                _ => panic!("Unsupported binary operation: {:?} {:?} {:?}", left, op, right)
+            },
+            BinaryOperator::Div => match (&left, &right) {
+                (Literal::Number(n1), Literal::Number(n2)) => Literal::Number(n1 / n2),
+                _ => panic!("Unsupported binary operation: {:?} {:?} {:?}", left, op, right)
+            },
+            BinaryOperator::Mod => match (&left, &right) {
+                (Literal::Number(n1), Literal::Number(n2)) => Literal::Number(n1 % n2),
+                _ => panic!("Unsupported binary operation: {:?} {:?} {:?}", left, op, right)
+            },
+            _ => unreachable!()
         }
     }
 
@@ -35,55 +64,10 @@ impl Interpreter {
                 op,
                 right
             } => {
-                let left = self.do_expression(*left_expr.clone());
+                let left = self.do_expression(*left_expr);
                 let right = self.do_expression(*right);
 
                 match op {
-                    BinaryOperator::Add => {
-                        match (left, right) {
-                            (Literal::Number(l), Literal::Number(r)) => Literal::Number(l + r),
-                            (Literal::String(l), Literal::String(r)) => Literal::String(l + &r),
-                            (Literal::String(l), Literal::Number(r)) => Literal::String(format!("{}{}", l, r)),
-                            (Literal::Number(l), Literal::String(r)) => Literal::String(format!("{}{}", l, r)),
-                            (l, r) => panic!("Unsupported operands for Add: {:?} and {:?}", l, r),
-                        }
-                    },
-                    BinaryOperator::Sub => {
-                        let left = match left {
-                            Literal::Number(left) => left,
-                            _ => panic!("Expected number, got {:?}", left)
-                        };
-                        let right = match right {
-                            Literal::Number(right) => right,
-                            _ => panic!("Expected number, got {:?}", right)
-                        };
-
-                        Literal::Number(left - right)
-                    },
-                    BinaryOperator::Mul => {
-                        let left = match left {
-                            Literal::Number(left) => left,
-                            _ => panic!("Expected number, got {:?}", left)
-                        };
-                        let right = match right {
-                            Literal::Number(right) => right,
-                            _ => panic!("Expected number, got {:?}", right)
-                        };
-
-                        Literal::Number(left * right)
-                    },
-                    BinaryOperator::Div => {
-                        let left = match left {
-                            Literal::Number(left) => left,
-                            _ => panic!("Expected number, got {:?}", left)
-                        };
-                        let right = match right {
-                            Literal::Number(right) => right,
-                            _ => panic!("Expected number, got {:?}", right)
-                        };
-
-                        Literal::Number(left / right)
-                    },
                     BinaryOperator::Equal => {
                         Literal::Boolean(left == right)
                     },
@@ -150,99 +134,20 @@ impl Interpreter {
 
                         Literal::Boolean(left && right)
                     },
-                    BinaryOperator::Mod => {
-                        let left = match left {
-                            Literal::Number(left) => left,
-                            _ => panic!("Expected number, got {:?}", left)
-                        };
-                        let right = match right {
-                            Literal::Number(right) => right,
-                            _ => panic!("Expected number, got {:?}", right)
-                        };
-
-                        Literal::Number(left % right)
-                    }
-                    BinaryOperator::PlusEqual => {
-                        let var = match *left_expr.clone() {
-                            Expression::Identifier(name) => name,
-                            _ => panic!("Unable to assign to non-lvalue.")
-                        };
-
-                        let val = match (left, right) {
-                            (Literal::Number(l), Literal::Number(r)) => Literal::Number(l + r),
-                            (Literal::String(l), Literal::String(r)) => Literal::String(l + &r),
-                            (Literal::String(l), Literal::Number(r)) => Literal::String(format!("{}{}", l, r)),
-                            (Literal::Number(l), Literal::String(r)) => Literal::String(format!("{}{}", l, r)),
-                            (l, r) => panic!("Unsupported operands for Add: {:?} and {:?}", l, r),
-                        };
-
-                        self.scope.set(var, val.clone());
-
-                        val.clone()
-                    },
-                    BinaryOperator::MinusEqual => {
-                        let var = match *left_expr.clone() {
-                            Expression::Identifier(name) => name,
-                            _ => panic!("Unable to assign to non-lvalue.")
-                        };
-
-                        let left = match left {
-                            Literal::Number(left) => left,
-                            _ => panic!("Expected number, got {:?}", left)
-                        };
-                        let right = match right {
-                            Literal::Number(right) => right,
-                            _ => panic!("Expected number, got {:?}", right)
-                        };
-
-                        let lit = Literal::Number(left - right);
-                        self.scope.set(var, lit.clone());
-                        lit
-                    },
-                    BinaryOperator::MulEqual => {
-                        let var = match *left_expr.clone() {
-                            Expression::Identifier(name) => name,
-                            _ => panic!("Unable to assign to non-lvalue.")
-                        };
-
-                        let left = match left {
-                            Literal::Number(left) => left,
-                            _ => panic!("Expected number, got {:?}", left)
-                        };
-                        let right = match right {
-                            Literal::Number(right) => right,
-                            _ => panic!("Expected number, got {:?}", right)
-                        };
-
-                        let lit = Literal::Number(left * right);
-                        self.scope.set(var, lit.clone());
-                        lit
-                    },
-                    BinaryOperator::DivEqual => {
-                        let var = match *left_expr.clone() {
-                            Expression::Identifier(name) => name,
-                            _ => panic!("Unable to assign to non-lvalue.")
-                        };
-
-                        let left = match left {
-                            Literal::Number(left) => left,
-                            _ => panic!("Expected number, got {:?}", left)
-                        };
-                        let right = match right {
-                            Literal::Number(right) => right,
-                            _ => panic!("Expected number, got {:?}", right)
-                        };
-
-                        let lit = Literal::Number(left / right);
-                        self.scope.set(var, lit.clone());
-                        lit
-                    }
+                    _ => self.apply_binary_op(op, left, right)
                 }
             },
             Expression::Array {
                 elements
             } => {
                 Literal::Array(Rc::new(RefCell::new(elements.iter().map(|el| self.do_expression(*el.clone()).into() ).collect())))
+            },
+            Expression::New {
+                class,
+                args
+            } => {
+                // TODO
+                Literal::Object(vec![])
             },
             Expression::Increment {
                 target
@@ -280,11 +185,19 @@ impl Interpreter {
             },
             Expression::Assignment {
                 target,
-                value
+                value,
+                op
             } => {
                 match *target {
                     Expression::Identifier(name) => {
-                        let res = self.do_expression(*value);
+                        let rhs = self.do_expression(*value);
+                        let res = if let Some(op) = op {
+                            let current = self.scope.get(name.clone()).expect(&format!("Unknown identifier: {}", name));
+                            self.apply_binary_op(op.associated_binary_op(), current, rhs)
+                        } else {
+                            rhs
+                        };
+
                         self.scope.set(name, res.clone());
                         res
                     },
@@ -527,6 +440,7 @@ impl Interpreter {
                             return Some(ControlFlow::Return(val));
                         },
                         Some(ControlFlow::Continue) => {
+                            self.scope.exit();
                             return Some(ControlFlow::Continue);
                         },
                         Some(ControlFlow::Break) => {
@@ -558,6 +472,16 @@ impl Interpreter {
                     args,
                     body
                 });
+            }
+            Statement::Class {
+                name, methods, scope
+            } => {
+                let class = Literal::Class {
+                    members: vec![],
+                    scope,
+                };
+
+                self.scope.set(name.clone(), class);
             }
             Statement::Expression(expr) => {
                 self.do_expression(*expr);

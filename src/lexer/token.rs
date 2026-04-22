@@ -16,8 +16,10 @@ pub enum Token {
     Continue, Break,
     Return,
     Function,
+    Class,
     True,
     False,
+    New,
 
     // Punctuation
     LeftParen, RightParen,
@@ -55,4 +57,13 @@ pub enum Token {
     MinusMinus,
 
     EOF,
+}
+
+impl Token {
+    pub fn is_assignment_operator(&self) -> bool {
+        match self {
+            Token::PlusEqual | Token::MinusEqual | Token::StarEqual | Token::SlashEqual => true,
+            _ => false,
+        }
+    }
 }

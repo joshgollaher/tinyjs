@@ -61,6 +61,8 @@ impl Lexer {
             ("false", Token::False),
             ("null", Token::Null),
             ("undefined", Token::Undefined),
+            ("class", Token::Class),
+            ("new", Token::New)
         ]);
 
         // Parse until whitespace or punctuation.

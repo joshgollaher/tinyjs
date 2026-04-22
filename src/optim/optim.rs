@@ -109,6 +109,7 @@ impl Optimizer {
             },
             e @ Expression::Increment { .. } => e,
             e @ Expression::Decrement { .. } => e,
+            e @ Expression::New { .. } => e,
             Expression::BinaryOp { left, op, right } => {
                 Expression::BinaryOp { left: self.propagate_expression(*left).into(), op, right: self.propagate_expression(*right).into() }
             },
@@ -116,14 +117,14 @@ impl Optimizer {
                 Expression::UnaryOp { op, expr: self.propagate_expression(*expr).into() }
             },
             e @ Expression::FunctionCall { .. } => e,
-            Expression::Assignment { target, value } => {
+            Expression::Assignment { target, value, op } => {
                 if let Expression::Identifier(id) = *target.clone() {
                     if let Some(_) = self.get_constant(id.as_str()) {
                         trace!("Constant {id} changed. Invalidating.");
                         self.remove_constant(id.as_str());
                     }
                 }
-                Expression::Assignment { target, value: self.propagate_expression(*value).into() }
+                Expression::Assignment { target, value: self.propagate_expression(*value).into(), op }
             },
             e @ Expression::Index { .. } => e,
             e @ Expression::Property { .. } => e,
@@ -173,6 +174,7 @@ impl Optimizer {
 
                 Statement::Scope { statements }.into()
             },
+            s @ Statement::Class { .. } => s,
             Statement::Let { name, value } => {
                 let expr = self.propagate_expression(*value);
                 match expr.clone() {
@@ -214,6 +216,7 @@ impl Optimizer {
                     body: self.fold_statement(*body).into(),
                 }
             }
+            s @ Statement::Class { .. } => s,
             Statement::Function { name, args, body } => Statement::Function { name, args, body: self.fold_statement(*body).into() },
             Statement::Scope { statements } => {
                 let statements = statements.into_iter().map(|stmt| self.fold_statement(stmt)).collect();
@@ -227,6 +230,7 @@ impl Optimizer {
         match expr {
             e @  Expression::Literal(..) => e,
             e @ Expression::Identifier(..) => e,
+            e @ Expression::New { .. } => e,
             Expression::Object { properties } => {
                 Expression::Object {
                     properties: properties.into_iter().map(|(k, v)| (k, self.fold_expression(*v).into())).collect(),
@@ -280,7 +284,7 @@ impl Optimizer {
             Expression::FunctionCall { callee, args } => {
                 Expression::FunctionCall { callee: self.fold_expression(*callee).into(), args: args.into_iter().map(|arg| self.fold_expression(*arg).into()).collect() }
             },
-            Expression::Assignment { target, value } => Expression::Assignment { target, value: self.fold_expression(*value).into() },
+            Expression::Assignment { target, value, op } => Expression::Assignment { target, value: self.fold_expression(*value).into(), op },
             Expression::Index { target, index } => Expression::Index { target, index: self.fold_expression(*index).into() },
             e @ Expression::Property { .. } => e,
         }
@@ -385,6 +389,7 @@ impl Optimizer {
                     for_stmt.clone()
                 }
             }
+            e @ Statement::Class { .. } => e,
             e @ Statement::Expression(_) => e,
             e @ Statement::Return(_) => e,
             e @ Statement::Continue => e,

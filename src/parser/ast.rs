@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use crate::lexer::Token;
 use crate::parser::parser::Parser;
+use crate::runtime::Scope;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BinaryOperator {
@@ -17,11 +18,28 @@ pub enum BinaryOperator {
     LessThanOrEqual,
     Equal,
     NotEqual,
-    Mod,
+    Mod
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AssignmentOperator {
     PlusEqual,
     MinusEqual,
     MulEqual,
-    DivEqual
+    DivEqual,
+    ModEqual,  // TODO: Implement this
+}
+
+impl AssignmentOperator {
+    pub fn associated_binary_op(&self) -> BinaryOperator {
+        match self {
+            AssignmentOperator::PlusEqual => BinaryOperator::Add,
+            AssignmentOperator::MinusEqual => BinaryOperator::Sub,
+            AssignmentOperator::MulEqual => BinaryOperator::Mul,
+            AssignmentOperator::DivEqual => BinaryOperator::Div,
+            AssignmentOperator::ModEqual => BinaryOperator::Mod
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -63,9 +81,16 @@ pub enum Literal {
     Undefined,
     Array(Rc<RefCell<Vec<Box<Literal>>>>),
     Object(Vec<(String, Box<Literal>)>),
+    Class {
+        scope: Scope,
+        members: Vec<(String, Vec<Box<Literal>>)>,
+    },
     Function {
         args: Vec<String>,
         body: Box<Statement>
+    },
+    Instance {
+        members: Vec<(String, Box<Literal>)>,
     },
     NativeFunction(NativeFn)
 }
@@ -81,6 +106,8 @@ impl Literal {
             Literal::Array(a) => {
                 !a.borrow().is_empty()
             },
+            Literal::Instance { .. } => true,
+            Literal::Class {..} => true,
             Literal::Object(o) => !o.is_empty(),
             Literal::Function { .. } => true,
             Literal::NativeFunction(_) => true,
@@ -114,6 +141,7 @@ pub enum Expression {
     Assignment {
         target: Box<Expression>,
         value: Box<Expression>,
+        op: Option<AssignmentOperator>,
     },
     Index {
         target: Box<Expression>,
@@ -128,6 +156,10 @@ pub enum Expression {
     },
     Decrement {
         target: Box<Expression>,
+    },
+    New {
+        class: String,
+        args: Vec<Expression>
     }
 }
 
@@ -163,7 +195,12 @@ pub enum Statement {
     Let {
         name: String,
         value: Box<Expression>,
-    }
+    },
+    Class {
+        name: String,
+        methods: Vec<Statement>,
+        scope: Scope,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -173,7 +210,11 @@ pub struct AST {
 
 impl AST {
     pub fn new(tokens: Vec<Token>) -> Self {
-        let mut parser = Parser::new(tokens);
-        parser.parse()
+        if tokens.is_empty() {
+            Self { statements: vec![] }
+        } else {
+            let mut parser = Parser::new(tokens);
+            parser.parse()
+        }
     }
 }

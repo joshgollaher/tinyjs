@@ -1,8 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ptr::null_mut;
 use std::rc::Rc;
-use std::sync::Arc;
 use rand::Rng;
 use crate::parser::{Literal, NativeFn};
 use crate::runtime::Scope;
@@ -25,8 +23,8 @@ impl Builtins {
             panic!("console.log takes exactly one argument");
         }
 
-        let str_content = match *args[0] {
-            Literal::String(ref s) => s.clone(),
+        let str_content = match &*args[0] {
+            Literal::String(s) => s.clone(),
             Literal::Number(n) => n.to_string(),
             Literal::Boolean(b) => b.to_string(),
             Literal::Null => "null".into(),
@@ -34,7 +32,9 @@ impl Builtins {
             Literal::Object(_) => "[object]".into(),
             Literal::Array(_) => "[array]".into(),
             Literal::Function { .. } => "[function]".into(),
+            Literal::Class { .. } => "[class]".into(),
             Literal::NativeFunction(_) => "[native function]".into(),
+            Literal::Instance { .. } => format!("[instance]").into(),
         };
 
         println!("{}", str_content);
@@ -58,7 +58,7 @@ impl Builtins {
         }
 
         Literal::String(
-            match *args[0] {
+            match &*args[0] {
                 Literal::String(_) => "string".into(),
                 Literal::Number(_) => "number".into(),
                 Literal::Boolean(_) => "boolean".into(),
@@ -68,6 +68,8 @@ impl Builtins {
                 Literal::Array(_) => "array".into(),
                 Literal::Function { .. } => "function".into(),
                 Literal::NativeFunction(_) => "native function".into(),
+                Literal::Class { .. } => "class".into(),
+                Literal::Instance { members } => "instance".into(),
             }
         ).into()
     }
@@ -101,10 +103,6 @@ impl Builtins {
             Literal::Array(arr) => arr,
             _ => panic!("array.push called on non-array")
         };
-
-        if args.len() != 1 {
-            panic!("array.push takes exactly one argument");
-        }
 
 
         let lit = arr.borrow_mut().pop().unwrap_or_else(|| panic!("Array.pop called on empty array."));
@@ -291,7 +289,7 @@ impl Builtins {
 
     pub fn load(&mut self, scope: &mut Scope) {
         for (name, func) in self.funcs.iter() {
-            scope.set(name, func.clone());
+            scope.set(name.clone(), func.clone());
         }
     }
 
@@ -321,8 +319,8 @@ impl Builtins {
         let func = Rc::clone(func);
 
         Literal::NativeFunction(NativeFn::new(format!("Number.{name}").into(), Rc::new(move |args| {
-            let str = num.clone();
-            func(str, args).into()
+            let num = num.clone();
+            func(num, args).into()
         }))).into()
     }
 }

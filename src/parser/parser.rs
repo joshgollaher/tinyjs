@@ -1,6 +1,7 @@
-use crate::parser::{AST, BinaryOperator, Expression, Literal, Statement, UnaryOperator};
+use crate::parser::{AST, BinaryOperator, Expression, Literal, Statement, UnaryOperator, AssignmentOperator};
 use crate::lexer::Token;
 use std::cmp::PartialEq;
+use crate::runtime::Scope;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -13,7 +14,7 @@ impl Parser {
     }
 
     fn done(&self) -> bool {
-        self.tokens[self.pos] == Token::EOF || self.pos >= self.tokens.len()
+        self.pos >= self.tokens.len() || self.tokens[self.pos] == Token::EOF
     }
 
     fn peek(&self) -> Token {
@@ -166,6 +167,80 @@ impl Parser {
         }
     }
 
+    fn do_method(&mut self) -> Statement {
+        let name = match self.consume() {
+            Token::Identifier(name) => name,
+            tok @ _ => panic!("Expected function name, got {:?}", tok),
+        };
+
+        self.expect(Token::LeftParen);
+        let mut args = Vec::new();
+        if self.peek() != Token::RightParen {
+            loop {
+                let arg = match self.consume() {
+                    Token::Identifier(name) => name,
+                    tok => panic!("Expected identifier after function, got {:?}", tok),
+                };
+                args.push(arg);
+
+                if self.peek() == Token::RightParen {
+                    break;
+                }
+                self.expect(Token::Comma);
+            }
+        }
+        self.expect(Token::RightParen);
+
+        let body = Statement::Scope {
+            statements: self.do_scope(),
+        };
+
+        Statement::Function {
+            name,
+            args,
+            body: Box::new(body)
+        }
+    }
+
+    fn do_member_assignment(&mut self) -> Statement {
+        todo!()
+    }
+
+    fn do_class(&mut self) -> Statement {
+        self.expect(Token::Class);
+        let name = match self.consume() {
+            Token::Identifier(s) => s,
+            t @ _ => panic!("Unexpected token {t:?}")
+        };
+        self.expect(Token::LeftBrace);
+
+        let mut methods = vec![];
+        let mut scope = Scope::new();
+
+        while self.peek() != Token::RightBrace && !self.done() {
+            match self.peek() {
+                Token::Identifier(_) => {
+                    if self.peek_by(1) == Token::LeftParen {
+                        // Assume method.
+                        methods.push(self.do_method());
+                    } else {
+                        // Assume member variable assignment.
+                        todo!("Implement member assignment.")
+                    }
+                },
+                _ => panic!("Unexpected token {:?}", self.peek()),
+            }
+        }
+
+        self.expect(Token::RightBrace);
+        
+        Statement::Class {
+            name,
+            methods,
+            scope
+        }
+    }
+
     fn do_scope(&mut self) -> Vec<Statement> {
         self.expect(Token::LeftBrace);
         let mut statements = Vec::new();
@@ -190,7 +265,8 @@ impl Parser {
                     self.expect(Token::Semicolon);
                     Statement::Return(Box::new(expr))
                 }
-            }
+            },
+            Token::Class => self.do_class(),
             Token::If => self.do_if(),
             Token::Let => self.do_let(),
             Token::While => self.do_while(),
@@ -332,23 +408,14 @@ impl Parser {
                 self.consume();
                 Some(BinaryOperator::LessThanOrEqual)
             },
-            Token::PlusEqual => {
-                self.consume();
-                Some(BinaryOperator::PlusEqual)
-            },
-            Token::MinusEqual => {
-                self.consume();
-                Some(BinaryOperator::MinusEqual)
-            },
-            Token::StarEqual => {
-                self.consume();
-                Some(BinaryOperator::MulEqual)
-            },
-            Token::SlashEqual => {
-                self.consume();
-                Some(BinaryOperator::DivEqual)
-            },
             _ => None,
+        }
+    }
+
+    fn infix_binding_power(&self, token: &Token) -> Option<(u8, u8)> {
+        match token {
+            Token::PipePipe => Some((1, 2)),
+            _ => None
         }
     }
 
@@ -365,6 +432,30 @@ impl Parser {
                     Expression::FunctionCall { callee: Expression::Identifier(name).into() , args }
                 } else {
                     Expression::Identifier(name)
+                }
+            },
+            Token::New => {
+                let class = match self.consume() {
+                    Token::Identifier(name) => name,
+                    tok => panic!("Expected identifier after new, got {:?}", tok),
+                };
+
+                self.expect(Token::LeftParen);
+                let mut params = vec![];
+
+                while self.peek() != Token::RightParen {
+                    params.push(self.expression());
+                    if self.peek() == Token::Comma {
+                        self.consume();
+                        params.push(self.expression());
+                    }
+                }
+
+                self.expect(Token::RightParen);
+                
+                Expression::New {
+                    class,
+                    args: params
                 }
             }
             Token::True => Expression::Literal(Literal::Boolean(true)),
@@ -451,17 +542,31 @@ impl Parser {
         }
 
         // Assignment
-        if self.peek() == Token::Equal {
-            self.consume();
+        if self.peek() == Token::Equal || self.peek().is_assignment_operator() {
+            let t = self.consume();
             let value = self.expression();
+
+            let op = if t.is_assignment_operator() {
+                match t {
+                    Token::PlusEqual => Some(AssignmentOperator::PlusEqual),
+                    Token::MinusEqual => Some(AssignmentOperator::MinusEqual),
+                    Token::StarEqual => Some(AssignmentOperator::MulEqual),
+                    Token::SlashEqual => Some(AssignmentOperator::DivEqual),
+                    _ => unreachable!(),
+                }
+            } else {
+                None
+            };
 
             return Expression::Assignment {
                 target: expr.into(),
                 value: value.into(),
+                op
             };
         }
 
         // Infix operators
+        // FIXME: This does not handle operator precedence.
         while let Some(op) = self.match_infix_operators() {
             let rhs = self.expression();
             expr = Expression::BinaryOp {

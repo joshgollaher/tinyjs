@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_imports)]
 
-use std::io::Write;
+use std::io::{Read, Write};
 use std::{env, fs};
 use std::rc::Rc;
 use std::time::Instant;
@@ -53,24 +53,41 @@ fn main() {
         mode
     });
 
-    let contents = match &config.mode {
+    match &config.mode {
         Mode::File(f) => {
-            fs::read_to_string(f).expect("Something went wrong reading the file")
+            let contents = fs::read_to_string(f).expect("Something went wrong reading the file");
+            let tokens = Lexer::new(&contents).lex();
+
+            let ast = AST::new(tokens);
+
+            println!("{:#?}", ast);
+
+            let mut optim = Optimizer::new(ast);
+            let ast = optim.optimize();
+
+            let mut interpreter = Interpreter::new(ast);
+            let start = Instant::now();
+            interpreter.run();
+            info!("Execution finished in {:.2}ms.", start.elapsed().as_micros() as f64 / 1000.0);
         }
-        Mode::Interactive => "".into()
+        Mode::Interactive => {
+            let mut interpreter = Interpreter::new(AST::new(vec![]));
+            loop {
+                print!(">");
+                std::io::stdout().flush().unwrap();
+                let mut input_str = "".into();
+                let _ = std::io::stdin().lock().read_to_string(&mut input_str).unwrap();
+
+                if input_str.trim() == "exit" {
+                    break;
+                }
+
+                let tokens = Lexer::new(&input_str).lex();
+                let ast = AST::new(tokens);
+
+                interpreter.ast = ast;
+                interpreter.run();
+            }
+        }
     };
-
-    let tokens = Lexer::new(&contents).lex();
-
-    let ast = AST::new(tokens);
-
-    let mut optim = Optimizer::new(ast);
-    let ast = optim.optimize();
-
-    // println!("{:#?}", ast);
-
-    let mut interpreter = Interpreter::new(ast);
-    let start = Instant::now();
-    interpreter.run();
-    info!("Execution finished in {:.2}ms.", start.elapsed().as_micros() as f64 / 1000.0);
 }

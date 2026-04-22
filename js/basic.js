@@ -53,5 +53,18 @@ let output = [
     description
 ];
 
+// Break
 
-console.log(intrinsics.typeof(output));
+let i = 10;
+while(i > 0) {
+    i = i - 1;
+    if(i == 4) {
+        break;
+    }
+}
+// console.log(i);
+
+// TODO: Add property support for arrays.
+for(let i = 0; i < output.length(); i++) {
+    console.log(output[i]);
+}
