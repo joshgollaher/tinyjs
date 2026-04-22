@@ -75,6 +75,8 @@ impl Token {
             Token::Slash => Some(BinaryOperator::Div),
             Token::Percent => Some(BinaryOperator::Mod),
             Token::Amp => Some(BinaryOperator::BinaryAnd),
+            Token::AmpAmp => Some(BinaryOperator::LogicalAnd),
+            Token::PipePipe => Some(BinaryOperator::LogicalOr),
             Token::Pipe => Some(BinaryOperator::BinaryOr),
             Token::EqualEqual => Some(BinaryOperator::Equal),
             Token::BangEqual => Some(BinaryOperator::NotEqual),

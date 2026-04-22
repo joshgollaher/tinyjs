@@ -39,6 +39,14 @@ impl Interpreter {
                 (Literal::Number(n1), Literal::Number(n2)) => Literal::Number(n1 - n2),
                 _ => panic!("Unsupported binary operation: {:?} {:?} {:?}", left, op, right)
             },
+            BinaryOperator::LogicalAnd => match (&left, &right) {
+                (Literal::Boolean(b1), Literal::Boolean(b2)) => Literal::Boolean(*b1 && *b2),
+                _ => panic!("Unsupported binary operation: {:?} {:?} {:?}", left, op, right)
+            },
+            BinaryOperator::LogicalOr => match (&left, &right) {
+                (Literal::Boolean(b1), Literal::Boolean(b2)) => Literal::Boolean(*b1 || *b2),
+                _ => panic!("Unsupported binary operation: {:?} {:?} {:?}", left, op, right)
+            }
             BinaryOperator::Mul => match (&left, &right) {
                 (Literal::Number(n1), Literal::Number(n2)) => Literal::Number(n1 * n2),
                 _ => panic!("Unsupported binary operation: {:?} {:?} {:?}", left, op, right)

@@ -445,22 +445,12 @@ impl Parser {
                     tok => panic!("Expected identifier after new, got {:?}", tok),
                 };
 
-                self.expect(Token::LeftParen);
-                let mut params = vec![];
-
-                while self.peek() != Token::RightParen {
-                    params.push(self.expression(0));
-                    if self.peek() == Token::Comma {
-                        self.consume();
-                        params.push(self.expression(0));
-                    }
-                }
-
+                let args = self.do_args();
                 self.expect(Token::RightParen);
                 
                 Expression::New {
                     class,
-                    args: params
+                    args
                 }
             }
             Token::True => Expression::Literal(Literal::Boolean(true)),
@@ -579,7 +569,10 @@ impl Parser {
                 }
 
                 self.consume();
-                let bin_op = next_tok.as_binary_operator().unwrap();
+                let bin_op = match next_tok.as_binary_operator() {
+                    Some(op) => op,
+                    None => panic!("Unexpected non-binop {:?}", next_tok),
+                };
                 let rhs = self.expression(rb);
 
                 expr = Expression::BinaryOp {
