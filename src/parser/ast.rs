@@ -12,6 +12,8 @@ pub enum BinaryOperator {
     Div,
     BinaryAnd,
     BinaryOr,
+    LogicalAnd,
+    LogicalOr,
     GreaterThan,
     LessThan,
     GreaterThanOrEqual,

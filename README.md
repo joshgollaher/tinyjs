@@ -7,6 +7,7 @@ This project is a toy interpreter for a subset of JavaScript. It is written in R
 - Objects
 - Intrinsics (Math, Object, etc.)
 - Closures
+- Operator precedence (pratt parsing).
 
 Inside src are modules for various parts of the interpreter, including:
 - Lexer: Takes source code and returns a list of tokens
@@ -16,7 +17,6 @@ Inside src are modules for various parts of the interpreter, including:
 
 Things I'm still implementing:
 - Bytecode generator & register-based VM
-- Operator precedence (pratt parsing).
 - Classes
 - Better error handling (and storing the source span for each AST node)
 - A REPL
