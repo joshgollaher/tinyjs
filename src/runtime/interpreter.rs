@@ -146,8 +146,14 @@ impl Interpreter {
                 class,
                 args
             } => {
-                // TODO
-                Literal::Object(vec![])
+                let lit = self.scope.get(class.clone()).unwrap_or_else(|| panic!("Undefined class: {class}"));
+                let class_members = match lit {
+                    Literal::Class { scope, members } => members,
+                    _ => panic!("Expected class after 'new'")
+                };
+
+                // FIXME: We're not calling constructors
+                Literal::Object(class_members)
             },
             Expression::Increment {
                 target
@@ -351,6 +357,7 @@ impl Interpreter {
                 name
             } => {
                 let target = self.do_expression(*target);
+
                 match target {
                     Literal::Object(properties) => {
                         let mut output = Literal::Undefined;
@@ -386,6 +393,16 @@ impl Interpreter {
                         );
 
                         *func
+                    },
+                    Literal::Class {
+                        scope, members
+                    } => {
+                        let member = match members.into_iter().filter(|m| m.0 == name).take(1).next() {
+                            Some(m) => m,
+                            None => panic!("{name} does not exist on class.")
+                        };
+
+                        *member.1.clone()
                     },
                     _ => panic!("Expected object, got {:?}", target)
                 }
@@ -477,7 +494,14 @@ impl Interpreter {
                 name, methods, scope
             } => {
                 let class = Literal::Class {
-                    members: vec![],
+                    members: methods.into_iter().map(|func| {
+                        let func = match func {
+                            Statement::Function { name, args, body } => (name, args, body),
+                            _ => unreachable!()
+                        };
+
+                        (func.0, Literal::Function { args: func.1, body: func.2 }.into())
+                    }).collect::<Vec<_>>(),
                     scope,
                 };
 

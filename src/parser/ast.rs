@@ -83,7 +83,7 @@ pub enum Literal {
     Object(Vec<(String, Box<Literal>)>),
     Class {
         scope: Scope,
-        members: Vec<(String, Vec<Box<Literal>>)>,
+        members: Vec<(String, Box<Literal>)>,
     },
     Function {
         args: Vec<String>,

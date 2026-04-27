@@ -6,7 +6,7 @@ class Foo {
     }
 
     bar() {
-
+        console.log("bar!");
     }
 
     baz(x, y, z) {
