@@ -160,7 +160,19 @@ impl Interpreter {
                     _ => panic!("Expected class after 'new'")
                 };
 
-                // FIXME: We're not calling constructors
+                // FIXME: We only handle the first constructor. Match to argument count
+                // Also we don't verify 'constructor' is actually a method.
+                match class_members.iter().cloned().filter(|m| m.0 == "constructor").take(1).next() {
+                    Some((_, lit)) => {
+                        // Call the constructor
+                        self.do_expression(Expression::FunctionCall {
+                            callee: Expression::Literal(*lit).into(),
+                            args: args.into_iter().map(|arg| arg.into()).collect(),
+                        });
+                    },
+                    None => {}  // Does not have constructor
+                }
+
                 Literal::Object(class_members)
             },
             Expression::Increment {
